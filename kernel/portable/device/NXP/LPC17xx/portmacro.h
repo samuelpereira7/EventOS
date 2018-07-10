@@ -44,15 +44,16 @@ extern "C" {
 #define portULONG		unsigned portLONG
 #define portSHORT		short
 #define portSTACK_TYPE	unsigned portLONG
-#define portBASE_TYPE	long
+#define portBASE_TYPE   long
 
-typedef unsigned portLONG portTickType;
-#define portMAX_DELAY ( portTickType ) 0xffffffff
+typedef unsigned portLONG 				portTickType;
+#define portMAX_DELAY ( portTickType ) 	0xffffffff
+#define portMAX_BASETYPE 				0x7fffffff
 
 #define pdTRUE		( 1 )
 #define pdFALSE		( 0 )
 #define pdPASS		pdTRUE
-
+#define pdFAIL		pdFALSE
 
 /** @brief Time structure definitions for easy manipulate the data */
 typedef struct {

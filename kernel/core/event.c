@@ -38,12 +38,12 @@
  */
 typedef struct evtEventControlBlock
 {
-	xListNode				xEventListNode;						/*< List node used to place the event in the list. */
-	portBASE_TYPE			ulEventPriority;							/*< The priority of the event where 0 is the lowest priority. */
+	xListNode				xEventListNode;							/*< List node used to place the event in the list. */
+	portBASE_TYPE			ulEventPriority;						/*< The priority of the event where 0 is the lowest priority. */
 	portBASE_TYPE			ulEventType;
 	signed char				pcEventName[configMAX_EVENT_NAME_LEN];	/*< Descriptive name given to the event when created.  Facilitates debugging only. */
 
-	xList*					pxSubscriberList;					/*< Pointer to the list of event handlers>*/
+	xList*					pxSubscriberList;						/*< Pointer to the list of event handlers >*/
 	void*					pvPayload;
 	portBASE_TYPE			ulPayloadSize;
 } evtECB;
@@ -58,7 +58,7 @@ typedef struct evtSubscriber
 	portBASE_TYPE			ulEventType;
 	pdEVENT_HANDLER_FUNCTION pdEventHandlerFunction;
 
-	xListNode				xSubscriberListNode;						/*< List node used to place the event in the list. */
+	xListNode				xSubscriberListNode;					/*< List node used to place the event in the list. */
 }evtSCB;
 
 /* Lists for events and event handlers. --------------------*/
@@ -159,7 +159,7 @@ __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_
 	pxSCB->pdEventHandlerFunction = pFunction;
 	pxSCB->pvHandler = pvSubscriber;
 
-	vList_initialiseNode( &( pxSCB->xSubscriberListNode ) );
+	vList_initializeNode( &( pxSCB->xSubscriberListNode ) );
 
 	/* Set the pxSCB as a link back from the xListNode.  This is so we can get
 	back to	the containing SCB from a generic node in a list. */
@@ -188,7 +188,7 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, unsigned portBAS
 	/*Easier to access and run over the subscribers list*/
 	pxECB->pxSubscriberList = (& pxSubscriberLists[ ulEventType ]);
 
-	vList_initialiseNode( &( pxECB->xEventListNode ) );
+	vList_initializeNode( &( pxECB->xEventListNode ) );
 
 	/* Set the pxECB as a link back from the xListNode.  This is so we can get
 	back to	the containing SCB from a generic node in a list. */

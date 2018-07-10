@@ -140,7 +140,7 @@ typedef struct xLIST
     @date   14/09/2017
 */
 void vList_initialize(xList* pxList);
-void vList_initialiseNode( xListNode* pxNode );
+void vList_initializeNode( xListNode* pxNode );
 void vList_insertHead( xList* pxList, xListNode* pxNewListNode );
 void vList_insert( xList* pxList, xListNode *pxNewListNode );
 void vList_remove( xListNode* pxNodeToRemove );
