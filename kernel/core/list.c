@@ -117,12 +117,12 @@ void vList_remove( xListNode* pxNodeToRemove )
 	pxNodeToRemove->pxPrevious->pxNext = pxNodeToRemove->pxNext;
 	pxNodeToRemove->pxNext->pxPrevious = pxNodeToRemove->pxPrevious;
 
-	pxNodeToRemove->pvContainer = NULL;
-
 	/* The list item knows which list it is in.  Obtain the list from the list
 	item. */
 	pxList = ( xList*) pxNodeToRemove->pvContainer;
 	( pxList->xNumberOfNodes )--;
+
+	pxNodeToRemove->pvContainer = NULL;
 }
 /*-----------------------------------------------------------*/
 

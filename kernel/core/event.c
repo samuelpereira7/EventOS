@@ -110,7 +110,7 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, unsigned portBAS
 __PRIVATE_ void prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portTickType prxEvent_getProcessStamp( void );
 __PRIVATE_ void prvEvent_updateLifeTime (void);
-__PRIVATE_ void prvEvent_getNextEvent(evtECB* pxECB);
+__PRIVATE_ void prvEvent_getNextEvent(evtECB** ppxECB);
 __PRIVATE_ void prvEvent_increaseEventPriority(evtECB* pxECB);
 __PRIVATE_ void prvEvent_decreaseEventPriority(evtECB* pxECB);
 __PRIVATE_ portBASE_TYPE prxEvent_getEventPriority(evtECB* pxECB);
@@ -296,6 +296,9 @@ signed portBASE_TYPE xEvent_publish (portBASE_TYPE ulEventType, portBASE_TYPE ul
 	{
 		prvEvent_initializeECBVariables(pxNewEvent,ulEventType, ulPriority);
 
+		pxNewEvent->pvPayload = pvPayload;
+		pxNewEvent->ulPayloadSize = ulPayloadSize;
+
 		portDISABLE_INTERRUPTS();
 		{
 			ulCurrentNumberOfEvents++;
@@ -322,8 +325,8 @@ void vEvent_processEvents (void)
 {
 	static evtSCB* pxSCB;
 
-	prvEvent_getNextEvent(pxCurrentECB);
-	while (pxCurrentECB)
+	prvEvent_getNextEvent( &pxCurrentECB );
+	while( pxCurrentECB )
 	{
 		//EventOS_printLog((portCHAR*)"[process] Event: %d / Priority: %d", pEvent->xHeader.eEvent,pEvent->xHeader.ePriority);
 
@@ -339,9 +342,9 @@ void vEvent_processEvents (void)
 			listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );
 		}
 		/*discard event after processed by all subscribers*/
-		prvEvent_terminateEvent(pxCurrentECB);
+		prvEvent_terminateEvent( pxCurrentECB );
 		prvEvent_updateLifeTime();
-		prvEvent_getNextEvent(pxCurrentECB);
+		prvEvent_getNextEvent( &pxCurrentECB );
 	}
 }
 
@@ -355,7 +358,7 @@ void vEvent_processEvents (void)
 */
 __PRIVATE_ void prvEvent_updateLifeTime (void)
 {
-	portBASE_TYPE ulPriority = EVENT_PRIORITY_HIGH-1;
+	portBASE_TYPE ulPriority = EVENT_PRIORITY_HIGH;
 	evtECB* pxECB = NULL;
 
 	prvEvent_incrementProcessStamp();
@@ -402,15 +405,15 @@ __PRIVATE_ void prvEvent_updateLifeTime (void)
     @date   20/10/2014
 
 */
-__PRIVATE_ void prvEvent_getNextEvent(evtECB* pxECB)
+__PRIVATE_ void prvEvent_getNextEvent(evtECB** ppxECB)
 {
 	portBASE_TYPE xPriority = EVENT_PRIORITY_HIGH;
-	pxECB = NULL;
+	*ppxECB = NULL;
 
 	/*check the event list with highest priority that is not empty*/
-	while ((xPriority < EVENT_PRIORITY_LAST) && (pxECB == NULL))
+	while( ( xPriority < EVENT_PRIORITY_LAST ) && ( *ppxECB == NULL ) )
 	{
-		pxECB = (evtECB*) listGET_OWNER_OF_HEAD_ENTRY(( xList* ) &( pxEventsLists[ xPriority ] ) );
+		*ppxECB = (evtECB*) listGET_OWNER_OF_HEAD_ENTRY(( xList* ) &( pxEventsLists[ xPriority ] ) );
 		xPriority++;
 	}
 }
@@ -483,8 +486,14 @@ __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB )
 {
 	/* Free up the memory allocated by the scheduler for the task.  It is up to
 	the task to free any memory allocated at the application level. */
-	vPortFree( pxECB->pvPayload );
+	if( pxECB->pvPayload != NULL )
+	{
+		vPortFree( pxECB->pvPayload );
+		pxECB->pvPayload = NULL;
+	}
+
 	vPortFree( pxECB );
+	pxECB = NULL;
 }
 
 
