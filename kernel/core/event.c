@@ -109,11 +109,11 @@ __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_
 __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, unsigned portBASE_TYPE ulEventType, unsigned portBASE_TYPE ulEventPriority);
 __PRIVATE_ void prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portTickType prxEvent_getProcessStamp( void );
-__PRIVATE_ void prvEvent_updateLifeTime (void);
-__PRIVATE_ void prvEvent_getNextEvent(evtECB** ppxECB);
-__PRIVATE_ void prvEvent_increaseEventPriority(evtECB* pxECB);
-__PRIVATE_ void prvEvent_decreaseEventPriority(evtECB* pxECB);
-__PRIVATE_ portBASE_TYPE prxEvent_getEventPriority(evtECB* pxECB);
+__PRIVATE_ void prvEvent_updateLifeTime( void );
+__PRIVATE_ evtECB* prpEvent_getNextEvent( void );
+__PRIVATE_ void prvEvent_increaseEventPriority( evtECB* pxECB );
+__PRIVATE_ void prvEvent_decreaseEventPriority( evtECB* pxECB );
+__PRIVATE_ portBASE_TYPE prxEvent_getEventPriority( evtECB* pxECB );
 __PRIVATE_ void prvEvent_terminateEvent( evtECB* pxECB );
 __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB );
 
@@ -325,7 +325,8 @@ void vEvent_processEvents (void)
 {
 	static evtSCB* pxSCB;
 
-	prvEvent_getNextEvent( &pxCurrentECB );
+	pxCurrentECB = prpEvent_getNextEvent();
+
 	while( pxCurrentECB )
 	{
 		//EventOS_printLog((portCHAR*)"[process] Event: %d / Priority: %d", pEvent->xHeader.eEvent,pEvent->xHeader.ePriority);
@@ -344,7 +345,7 @@ void vEvent_processEvents (void)
 		/*discard event after processed by all subscribers*/
 		prvEvent_terminateEvent( pxCurrentECB );
 		prvEvent_updateLifeTime();
-		prvEvent_getNextEvent( &pxCurrentECB );
+		pxCurrentECB = prpEvent_getNextEvent();
 	}
 }
 
@@ -403,19 +404,20 @@ __PRIVATE_ void prvEvent_updateLifeTime (void)
     @return void
     @author Amanda/Samuel
     @date   20/10/2014
-
 */
-__PRIVATE_ void prvEvent_getNextEvent(evtECB** ppxECB)
+__PRIVATE_ evtECB* prpEvent_getNextEvent( void )
 {
 	portBASE_TYPE xPriority = EVENT_PRIORITY_HIGH;
-	*ppxECB = NULL;
+	evtECB* pxECB = NULL;
 
 	/*check the event list with highest priority that is not empty*/
-	while( ( xPriority < EVENT_PRIORITY_LAST ) && ( *ppxECB == NULL ) )
+	while( ( xPriority < EVENT_PRIORITY_LAST ) && ( pxECB == NULL ) )
 	{
-		*ppxECB = (evtECB*) listGET_OWNER_OF_HEAD_ENTRY(( xList* ) &( pxEventsLists[ xPriority ] ) );
+		pxECB = (evtECB*) listGET_OWNER_OF_HEAD_ENTRY( ( xList* ) &( pxEventsLists[ xPriority ] ) );
 		xPriority++;
 	}
+
+	return pxECB;
 }
 
 /*
@@ -427,7 +429,7 @@ __PRIVATE_ void prvEvent_getNextEvent(evtECB** ppxECB)
     @date   20/10/2014
 
 */
-__PRIVATE_ void prvEvent_increaseEventPriority(evtECB* pxECB)
+__PRIVATE_ void prvEvent_increaseEventPriority( evtECB* pxECB )
 {
 	if(!pxECB) return;
 	pxECB->ulEventPriority--;
