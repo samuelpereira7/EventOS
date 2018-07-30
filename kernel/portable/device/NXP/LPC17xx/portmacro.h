@@ -45,10 +45,12 @@ extern "C" {
 #define portSHORT		short
 #define portSTACK_TYPE	unsigned portLONG
 #define portBASE_TYPE   long
+#define portUBASE_TYPE  unsigned portLONG
+#define portTICK_TYPE 	unsigned portLONG
 
-typedef unsigned portLONG 				portTickType;
-#define portMAX_DELAY ( portTickType ) 	0xffffffff
-#define portMAX_BASETYPE 				0x7fffffff
+#define portMAX_DELAY 		( portTICK_TYPE ) 0xffffffff
+#define portMAX_BASETYPE 	( portBASE_TYPE ) 0x7fffffff
+#define portMAX_UBASETYPE	( portUBASE_TYPE ) 0xffffffff
 
 #define pdTRUE		( 1 )
 #define pdFALSE		( 0 )

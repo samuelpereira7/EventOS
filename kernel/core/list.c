@@ -42,7 +42,7 @@ void vList_initialize(xList* pxList)
 	pxList->xListSentinel.pxNext = ( xListNode * ) &( pxList->xListSentinel );
 	pxList->xListSentinel.pxPrevious = ( xListNode * ) &( pxList->xListSentinel );
 
-	pxList->xNumberOfNodes = 0;
+	pxList->uxNumberOfNodes = 0;
 }
 
 void vList_initializeNode( xListNode* pxNode )
@@ -69,7 +69,7 @@ void vList_insertHead( xList* pxList, xListNode* pxNewListNode )
 	/* Remember which list the node is in. */
 	pxNewListNode->pvContainer = ( void * ) pxList;
 
-	( pxList->xNumberOfNodes )++;
+	( pxList->uxNumberOfNodes )++;
 }
 
 /*-----------------------------------------------------------*/
@@ -106,7 +106,7 @@ void vList_insert( xList* pxList, xListNode *pxNewListNode )
 	item later. */
 	pxNewListNode->pvContainer = ( void * ) pxList;
 
-	( pxList->xNumberOfNodes )++;
+	( pxList->uxNumberOfNodes )++;
 }
 /*-----------------------------------------------------------*/
 
@@ -120,7 +120,7 @@ void vList_remove( xListNode* pxNodeToRemove )
 	/* The list item knows which list it is in.  Obtain the list from the list
 	item. */
 	pxList = ( xList*) pxNodeToRemove->pvContainer;
-	( pxList->xNumberOfNodes )--;
+	( pxList->uxNumberOfNodes )--;
 
 	pxNodeToRemove->pvContainer = NULL;
 }
