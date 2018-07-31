@@ -24,6 +24,8 @@
 #include "EventOS.h"
 #include "event.h"
 
+#include "Log.h"
+
 /*********************************************************
     private constants.
 *********************************************************/
@@ -38,14 +40,14 @@
  */
 typedef struct evtEventControlBlock
 {
-	xListNode				xEventListNode;						/*< List node used to place the event in the list. */
-	portBASE_TYPE			ulEventPriority;							/*< The priority of the event where 0 is the lowest priority. */
-	portBASE_TYPE			ulEventType;
+	xListNode				xEventListNode;							/*< List node used to place the event in the list. */
+	portBASE_TYPE			xEventPriority;						/*< The priority of the event where 0 is the lowest priority. */
+	portBASE_TYPE			xEventType;
 	signed char				pcEventName[configMAX_EVENT_NAME_LEN];	/*< Descriptive name given to the event when created.  Facilitates debugging only. */
 
-	xList*					pxSubscriberList;					/*< Pointer to the list of event handlers>*/
+	xList*					pxSubscriberList;						/*< Pointer to the list of event handlers >*/
 	void*					pvPayload;
-	portBASE_TYPE			ulPayloadSize;
+	portBASE_TYPE			xPayloadSize;
 } evtECB;
 
 /*
@@ -55,10 +57,10 @@ typedef struct evtEventControlBlock
 typedef struct evtSubscriber
 {
 	void* pvHandler;
-	portBASE_TYPE			ulEventType;
+	portBASE_TYPE			xEventType;
 	pdEVENT_HANDLER_FUNCTION pdEventHandlerFunction;
 
-	xListNode				xSubscriberListNode;						/*< List node used to place the event in the list. */
+	xListNode				xSubscriberListNode;					/*< List node used to place the event in the list. */
 }evtSCB;
 
 /* Lists for events and event handlers. --------------------*/
@@ -74,9 +76,9 @@ __PRIVATE_ evtECB* volatile pxCurrentECB = NULL;
 /*********************************************************
     private variables.
 *********************************************************/
-__PRIVATE_ volatile unsigned portBASE_TYPE ulCurrentNumberOfEvents 	= ( unsigned portBASE_TYPE ) 0;
-__PRIVATE_ volatile unsigned portBASE_TYPE ulCurrentNumberOfSubscribers 	= ( unsigned portBASE_TYPE ) 0;
-__PRIVATE_ volatile unsigned portBASE_TYPE ulProcessStamp = ( unsigned portBASE_TYPE ) 0;
+__PRIVATE_ volatile portUBASE_TYPE uxCurrentNumberOfEvents 	= 		( portUBASE_TYPE ) 0;
+__PRIVATE_ volatile portUBASE_TYPE uxCurrentNumberOfSubscribers =	( portUBASE_TYPE ) 0;
+__PRIVATE_ volatile portUBASE_TYPE uxProcessStamp = 				( portUBASE_TYPE ) 0;
 
 
 /*********************************************************
@@ -87,13 +89,13 @@ __PRIVATE_ volatile unsigned portBASE_TYPE ulProcessStamp = ( unsigned portBASE_
  * Place the subscriber represented by pxSCB into the appropriate event queue for.
  * It is inserted at the head of the list.
  */
-#define prvEvent_addSubscriberToList( pxSCB ) vList_insertHead( ( xList* ) &( pxSubscriberLists[ pxSCB->ulEventType ] ), &( pxSCB->xSubscriberListNode ) );	\
+#define prvEvent_addSubscriberToList( pxSCB ) vList_insertHead( ( xList* ) &( pxSubscriberLists[ pxSCB->xEventType ] ), &( pxSCB->xSubscriberListNode ) );	\
 
 /*
  * Place the event represented by pxECB into the appropriate event priority queue.
  * It is inserted at the right position in the list, considering the deadline set on ulNodeValue.
  */
-#define prvEvent_addEventToList( pxECB ) vList_insert( ( xList* ) &( pxEventsLists[ pxECB->ulEventPriority ] ), &( pxECB->xEventListNode ) );	\
+#define prvEvent_addEventToList( pxECB ) vList_insert( ( xList* ) &( pxEventsLists[ pxECB->xEventPriority ] ), &( pxECB->xEventListNode ) );	\
 
 /*
  * Place the event represented by pxECB into the appropriate event priority queue.
@@ -105,15 +107,15 @@ __PRIVATE_ volatile unsigned portBASE_TYPE ulProcessStamp = ( unsigned portBASE_
 __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB );
 __PRIVATE_ void prvEvent_initializeEventLists( void );
 __PRIVATE_ void prvEvent_initializeSubscriberLists( void );
-__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE	ulEventType, void* pvSubscriber);
-__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, unsigned portBASE_TYPE ulEventType, unsigned portBASE_TYPE ulEventPriority);
+__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber );
+__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority );
 __PRIVATE_ void prvEvent_incrementProcessStamp( void );
-__PRIVATE_ portTickType prxEvent_getProcessStamp( void );
-__PRIVATE_ void prvEvent_updateLifeTime (void);
-__PRIVATE_ void prvEvent_getNextEvent(evtECB* pxECB);
-__PRIVATE_ void prvEvent_increaseEventPriority(evtECB* pxECB);
-__PRIVATE_ void prvEvent_decreaseEventPriority(evtECB* pxECB);
-__PRIVATE_ portBASE_TYPE prxEvent_getEventPriority(evtECB* pxECB);
+__PRIVATE_ portUBASE_TYPE prxEvent_getProcessStamp( void );
+__PRIVATE_ void prvEvent_updateLifeTime( void );
+__PRIVATE_ evtECB* prpEvent_getNextEvent( void );
+__PRIVATE_ void prvEvent_increaseEventPriority( evtECB* pxECB );
+__PRIVATE_ void prvEvent_decreaseEventPriority( evtECB* pxECB );
+__PRIVATE_ portBASE_TYPE prxEvent_getEventPriority( evtECB* pxECB );
 __PRIVATE_ void prvEvent_terminateEvent( evtECB* pxECB );
 __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB );
 
@@ -122,18 +124,18 @@ __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB );
 *********************************************************/
 
 
-__PRIVATE_ portTickType prxEvent_getProcessStamp( void )
+__PRIVATE_ portUBASE_TYPE prxEvent_getProcessStamp( void )
 {
-	return ulProcessStamp;
+	return uxProcessStamp;
 }
 
 __PRIVATE_ void prvEvent_initializeEventLists( void )
 {
-	unsigned portBASE_TYPE ulPriority;
+	portUBASE_TYPE uxPriority;
 
-	for( ulPriority = 0; ulPriority < EVENT_PRIORITY_LAST; ulPriority++ )
+	for( uxPriority = 0; uxPriority < EVENT_PRIORITY_LAST; uxPriority++ )
 	{
-		vList_initialize( ( xList* ) &( pxEventsLists[ ulPriority ] ) );
+		vList_initialize( ( xList* ) &( pxEventsLists[ uxPriority ] ) );
 	}
 }
 
@@ -147,60 +149,62 @@ __PRIVATE_ void prvEvent_initializeSubscriberLists( void )
 	}
 }
 
-__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE	ulEventType, void* pvSubscriber)
+__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE xEventType, void* pvSubscriber )
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( ulEventType >= EVENT_TYPE_LAST )
+	if( xEventType >= EVENT_TYPE_LAST )
 	{
-		ulEventType = EVENT_TYPE_LAST - 1;
+		xEventType = EVENT_TYPE_LAST - 1;
 	}
-	pxSCB->ulEventType = ulEventType;
+
+	pxSCB->xEventType = xEventType;
 	pxSCB->pdEventHandlerFunction = pFunction;
 	pxSCB->pvHandler = pvSubscriber;
 
-	vList_initialiseNode( &( pxSCB->xSubscriberListNode ) );
+	vList_initializeNode( &( pxSCB->xSubscriberListNode ) );
 
 	/* Set the pxSCB as a link back from the xListNode.  This is so we can get
 	back to	the containing SCB from a generic node in a list. */
 	listSET_LIST_NODE_OWNER((xListNode*) &( pxSCB->xSubscriberListNode ), pxSCB );
 }
 
-__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, unsigned portBASE_TYPE ulEventType, unsigned portBASE_TYPE ulEventPriority)
+__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority )
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( ulEventType >= EVENT_TYPE_LAST )
+	if( uxEventType >= EVENT_TYPE_LAST )
 	{
-		ulEventType = EVENT_TYPE_LAST - 1;
+		uxEventType = EVENT_TYPE_LAST - 1;
 	}
 
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( ulEventPriority >= EVENT_PRIORITY_LAST )
+	if( uxEventPriority >= EVENT_PRIORITY_LAST )
 	{
-		ulEventType = EVENT_PRIORITY_LAST - 1;
+		uxEventType = EVENT_PRIORITY_LAST - 1;
 	}
 
-	pxECB->ulEventType = ulEventType;
-	pxECB->ulEventPriority = ulEventPriority;
+	pxECB->xEventType = uxEventType;
+	pxECB->xEventPriority = uxEventPriority;
+	pxECB->pvPayload = NULL;
+	pxECB->xPayloadSize = 0;
 
 	/*Easier to access and run over the subscribers list*/
-	pxECB->pxSubscriberList = (& pxSubscriberLists[ ulEventType ]);
+	pxECB->pxSubscriberList = (& pxSubscriberLists[ uxEventType ]);
 
-	vList_initialiseNode( &( pxECB->xEventListNode ) );
+	vList_initializeNode( &( pxECB->xEventListNode ) );
 
 	/* Set the pxECB as a link back from the xListNode.  This is so we can get
 	back to	the containing SCB from a generic node in a list. */
 	listSET_LIST_NODE_OWNER((xListNode*) &( pxECB->xEventListNode ), pxECB );
 	/* Event lists are always in priority order. */
 	listSET_LIST_NODE_VALUE( &( pxECB->xEventListNode ), ( portBASE_TYPE ) prxEvent_getProcessStamp());
-
 }
 
 __PRIVATE_ void prvEvent_incrementProcessStamp( void )
 {
-	ulProcessStamp++;
+	uxProcessStamp++;
 }
 
 
@@ -258,9 +262,9 @@ signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portB
 		portDISABLE_INTERRUPTS();
 		{
 			/*Inserting new subscriber in the respective event list*/
-			ulCurrentNumberOfSubscribers++;
+			uxCurrentNumberOfSubscribers++;
 
-			if(ulCurrentNumberOfSubscribers == ( unsigned portBASE_TYPE ) 1)
+			if( uxCurrentNumberOfSubscribers == ( portUBASE_TYPE ) 1 )
 			{
 				/* This is the first subscriber to be created so do the preliminary
 				required initialization. */
@@ -284,21 +288,30 @@ signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portB
     @date   22/09/2014
 */
 
-signed portBASE_TYPE xEvent_publish (portBASE_TYPE ulEventType, portBASE_TYPE ulPriority, void* pvPayload, portBASE_TYPE ulPayloadSize)
+signed portBASE_TYPE xEvent_publish (portBASE_TYPE xEventType, portBASE_TYPE xPriority, void* pvPayload, portBASE_TYPE xPayloadSize)
 {
-	if (ulEventType >= EVENT_TYPE_LAST) return pdFALSE;
-	if (ulPriority >= EVENT_PRIORITY_LAST) return pdFALSE;
+	if (xEventType >= EVENT_TYPE_LAST) return pdFALSE;
+	if (xPriority >= EVENT_PRIORITY_LAST) return pdFALSE;
 
 	portBASE_TYPE xStatus = pdFALSE;
 
 	evtECB* pxNewEvent = (evtECB*)pvPortMalloc(sizeof(evtECB));
 	if(pxNewEvent)
 	{
-		prvEvent_initializeECBVariables(pxNewEvent,ulEventType, ulPriority);
+		prvEvent_initializeECBVariables( pxNewEvent, xEventType, xPriority );
+
+		if( pvPayload != NULL )
+		{
+			pxNewEvent->pvPayload = malloc( xPayloadSize * sizeof( portCHAR ) );
+			memcpy( pxNewEvent->pvPayload, pvPayload, xPayloadSize );
+			pxNewEvent->xPayloadSize = xPayloadSize;
+
+			//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[EventOS] Malloc: %p", pxNewEvent->pvPayload );
+		}
 
 		portDISABLE_INTERRUPTS();
 		{
-			ulCurrentNumberOfEvents++;
+			uxCurrentNumberOfEvents++;
 			prvEvent_addEventToList( pxNewEvent );
 			xStatus = pdPASS;
 			//EventOS_printLog((portCHAR*)"[publish] Event: %d / Priority: %d", pxNew->pxEvent->xHeader.eEvent, pxNew->pxEvent->xHeader.ePriority);
@@ -322,8 +335,9 @@ void vEvent_processEvents (void)
 {
 	static evtSCB* pxSCB;
 
-	prvEvent_getNextEvent(pxCurrentECB);
-	while (pxCurrentECB)
+	pxCurrentECB = prpEvent_getNextEvent();
+
+	while( pxCurrentECB )
 	{
 		//EventOS_printLog((portCHAR*)"[process] Event: %d / Priority: %d", pEvent->xHeader.eEvent,pEvent->xHeader.ePriority);
 
@@ -331,17 +345,17 @@ void vEvent_processEvents (void)
 		listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );
 		while(pxSCB)
 		{
-			if((pxSCB->ulEventType == pxCurrentECB->ulEventType)&&( pxSCB->pdEventHandlerFunction))
+			if( ( pxSCB->xEventType == pxCurrentECB->xEventType ) && ( pxSCB->pdEventHandlerFunction ) )
 			{
-				pxSCB->pdEventHandlerFunction(pxSCB->ulEventType,pxSCB->pvHandler,pxCurrentECB->pvPayload,pxCurrentECB->ulPayloadSize); //call event related function
+				pxSCB->pdEventHandlerFunction( pxSCB->xEventType, pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
 			}
 			/*take the next subscriber from the sub list related to the event*/
 			listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );
 		}
 		/*discard event after processed by all subscribers*/
-		prvEvent_terminateEvent(pxCurrentECB);
+		prvEvent_terminateEvent( pxCurrentECB );
 		prvEvent_updateLifeTime();
-		prvEvent_getNextEvent(pxCurrentECB);
+		pxCurrentECB = prpEvent_getNextEvent();
 	}
 }
 
@@ -355,7 +369,7 @@ void vEvent_processEvents (void)
 */
 __PRIVATE_ void prvEvent_updateLifeTime (void)
 {
-	portBASE_TYPE ulPriority = EVENT_PRIORITY_HIGH-1;
+	portBASE_TYPE ulPriority = EVENT_PRIORITY_HIGH;
 	evtECB* pxECB = NULL;
 
 	prvEvent_incrementProcessStamp();
@@ -400,19 +414,20 @@ __PRIVATE_ void prvEvent_updateLifeTime (void)
     @return void
     @author Amanda/Samuel
     @date   20/10/2014
-
 */
-__PRIVATE_ void prvEvent_getNextEvent(evtECB* pxECB)
+__PRIVATE_ evtECB* prpEvent_getNextEvent( void )
 {
 	portBASE_TYPE xPriority = EVENT_PRIORITY_HIGH;
-	pxECB = NULL;
+	evtECB* pxECB = NULL;
 
 	/*check the event list with highest priority that is not empty*/
-	while ((xPriority < EVENT_PRIORITY_LAST) && (pxECB == NULL))
+	while( ( xPriority < EVENT_PRIORITY_LAST ) && ( pxECB == NULL ) )
 	{
-		pxECB = (evtECB*) listGET_OWNER_OF_HEAD_ENTRY(( xList* ) &( pxEventsLists[ xPriority ] ) );
+		pxECB = (evtECB*) listGET_OWNER_OF_HEAD_ENTRY( ( xList* ) &( pxEventsLists[ xPriority ] ) );
 		xPriority++;
 	}
+
+	return pxECB;
 }
 
 /*
@@ -422,15 +437,14 @@ __PRIVATE_ void prvEvent_getNextEvent(evtECB* pxECB)
     @return void
     @author Amanda/Samuel
     @date   20/10/2014
-
 */
-__PRIVATE_ void prvEvent_increaseEventPriority(evtECB* pxECB)
+__PRIVATE_ void prvEvent_increaseEventPriority( evtECB* pxECB )
 {
 	if(!pxECB) return;
-	pxECB->ulEventPriority--;
-	if(pxECB->ulEventPriority < EVENT_PRIORITY_HIGH)
+	pxECB->xEventPriority--;
+	if(pxECB->xEventPriority < EVENT_PRIORITY_HIGH)
 	{
-		pxECB->ulEventPriority = (portBASE_TYPE) EVENT_PRIORITY_HIGH;
+		pxECB->xEventPriority = (portBASE_TYPE) EVENT_PRIORITY_HIGH;
 	}
 }
 
@@ -446,10 +460,10 @@ __PRIVATE_ void prvEvent_increaseEventPriority(evtECB* pxECB)
 __PRIVATE_ void prvEvent_decreaseEventPriority(evtECB* pxECB)
 {
 	if(!pxECB) return;
-	pxECB->ulEventPriority++;
-	if(pxECB->ulEventPriority >= EVENT_PRIORITY_LAST)
+	pxECB->xEventPriority++;
+	if(pxECB->xEventPriority >= EVENT_PRIORITY_LAST)
 	{
-		pxECB->ulEventPriority = (portBASE_TYPE) EVENT_PRIORITY_LAST-1;
+		pxECB->xEventPriority = (portBASE_TYPE) EVENT_PRIORITY_LAST-1;
 	}
 }
 
@@ -465,7 +479,7 @@ __PRIVATE_ void prvEvent_decreaseEventPriority(evtECB* pxECB)
 __PRIVATE_ portBASE_TYPE prxEvent_getEventPriority(evtECB* pxECB)
 {
 	if(!pxECB) return EVENT_PRIORITY_LAST;
-	return (portBASE_TYPE)pxECB->ulEventPriority;
+	return (portBASE_TYPE)pxECB->xEventPriority;
 }
 
 __PRIVATE_ void prvEvent_terminateEvent( evtECB* pxECB )
@@ -473,7 +487,7 @@ __PRIVATE_ void prvEvent_terminateEvent( evtECB* pxECB )
 	portDISABLE_INTERRUPTS();
 	{
 		vList_remove( &( pxECB->xEventListNode ) );
-		--ulCurrentNumberOfEvents;
+		--uxCurrentNumberOfEvents;
 	}
 	portENABLE_INTERRUPTS();
 	prvEvent_deleteECB( pxECB );
@@ -483,8 +497,16 @@ __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB )
 {
 	/* Free up the memory allocated by the scheduler for the task.  It is up to
 	the task to free any memory allocated at the application level. */
-	vPortFree( pxECB->pvPayload );
+	if( pxECB->pvPayload != NULL )
+	{
+		//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[EventOS] Free: %p", pxECB->pvPayload );
+
+		vPortFree( pxECB->pvPayload );
+		pxECB->pvPayload = NULL;
+	}
+
 	vPortFree( pxECB );
+	pxECB = NULL;
 }
 
 
@@ -496,7 +518,7 @@ __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB )
     @author edielsonpf
     @date   19/09/2017
 */
-portCHAR*  pxEvent_getVersion(void)
+portCHAR* pxEvent_getVersion(void)
 {
 	return (portCHAR*) evnKERNEL_VERSION_NUMBER;
 }

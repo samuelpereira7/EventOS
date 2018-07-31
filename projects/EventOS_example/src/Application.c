@@ -2,6 +2,7 @@
 #include <cr_section_macros.h>
 #include <NXP/crp.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "event.h"
 
@@ -37,11 +38,11 @@ void SysTick_Handler(void)
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: TICK");
 		xEvent_publish(EVENT_SYS_TICK, EVENT_PRIORITY_LOW, NULL, 0);
-		xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
-		xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
-		xEvent_publish(EVENT_SYS_UART, EVENT_PRIORITY_MEDIUM, NULL, 0);
-		xEvent_publish(EVENT_SYS_USB, EVENT_PRIORITY_MEDIUM, NULL, 0);
-		xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
+		//xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
+		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
+		//xEvent_publish(EVENT_SYS_UART, EVENT_PRIORITY_MEDIUM, NULL, 0);
+		//xEvent_publish(EVENT_SYS_USB, EVENT_PRIORITY_MEDIUM, NULL, 0);
+		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
 	}
 	if(msTicks % 5000 == 0)
 	{
@@ -81,7 +82,6 @@ void Application_initI2C(void)
 
 void Application_new(void)
 {
-	Application_initSysTick();
 	Application_initI2C();
 
 	led2_init();
@@ -102,6 +102,8 @@ void Application_new(void)
 	xEvent_subscribe(Application_receiveLight, EVENT_APP_LIGHT, NULL);
 
 	led2_on();
+
+	Application_initSysTick();
 }
 
 
@@ -130,14 +132,14 @@ void Application_receiveLight(portBASE_TYPE EventType, void* pvHandler, void* pv
 
 void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
 {
-	portLONG iLight;
+	portBASE_TYPE xLight;
 
 	switch (EventType)
 	{
 		case EVENT_SYS_SYSTICK:
 			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Systick)");
-			iLight = light_read();
-			xEvent_publish(EVENT_APP_LIGHT, EVENT_PRIORITY_LOW, &iLight, sizeof(portLONG));
+			xLight = light_read();
+			xEvent_publish( EVENT_APP_LIGHT, EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
 		    led2_invert();
 			break;
 		case EVENT_SYS_TICK:

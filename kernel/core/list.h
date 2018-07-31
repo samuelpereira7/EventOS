@@ -45,7 +45,7 @@ typedef struct xLIST_SENTINEL xSentinelListNode;
  */
 typedef struct xLIST
 {
-	volatile unsigned portBASE_TYPE xNumberOfNodes;
+	volatile portUBASE_TYPE uxNumberOfNodes;
 	volatile xListNode* pxIndex;						/*< Used to walk through the list.  Points to the last item returned by a call to pvListGetOwnerOfNextEntry (). */
 	volatile xSentinelListNode xListSentinel;
 }xList;
@@ -99,7 +99,7 @@ typedef struct xLIST
  * \page listGET_OWNER_OF_HEAD_ENTRY listGET_OWNER_OF_HEAD_ENTRY
  * \ingroup LinkedList
  */
-#define listGET_OWNER_OF_HEAD_ENTRY( pxList )  ( ( ( pxList )->xNumberOfNodes != ( unsigned portBASE_TYPE ) 0 ) ? ( ( &( ( pxList )->xListSentinel ) )->pxNext->pvOwner ) : ( NULL ) )
+#define listGET_OWNER_OF_HEAD_ENTRY( pxList )  ( ( ( pxList )->uxNumberOfNodes != ( unsigned portBASE_TYPE ) 0 ) ? ( ( &( ( pxList )->xListSentinel ) )->pxNext->pvOwner ) : ( NULL ) )
 
 
 /*
@@ -128,7 +128,7 @@ typedef struct xLIST
  * \page listLIST_IS_EMPTY listLIST_IS_EMPTY
  * \ingroup LinkedList
  */
-#define listIS_EMPTY( pxList ) ( ( pxList )->xNumberOfNodes == ( unsigned portBASE_TYPE ) 0 )
+#define listIS_EMPTY( pxList ) ( ( pxList )->uxNumberOfNodes == ( unsigned portBASE_TYPE ) 0 )
 
 /**
 	This method is responsible responsible for initializing
@@ -140,7 +140,7 @@ typedef struct xLIST
     @date   14/09/2017
 */
 void vList_initialize(xList* pxList);
-void vList_initialiseNode( xListNode* pxNode );
+void vList_initializeNode( xListNode* pxNode );
 void vList_insertHead( xList* pxList, xListNode* pxNewListNode );
 void vList_insert( xList* pxList, xListNode *pxNewListNode );
 void vList_remove( xListNode* pxNodeToRemove );
