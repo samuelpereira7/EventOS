@@ -132,14 +132,14 @@ void Application_receiveLight(portBASE_TYPE EventType, void* pvHandler, void* pv
 
 void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
 {
-	portLONG* plLight = (portLONG*) malloc( sizeof( portLONG ));
+	portBASE_TYPE xLight;
 
 	switch (EventType)
 	{
 		case EVENT_SYS_SYSTICK:
 			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Systick)");
-			*plLight = light_read();
-			xEvent_publish(EVENT_APP_LIGHT, EVENT_PRIORITY_MEDIUM, plLight, sizeof(portLONG));
+			xLight = light_read();
+			xEvent_publish( EVENT_APP_LIGHT, EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
 		    led2_invert();
 			break;
 		case EVENT_SYS_TICK:

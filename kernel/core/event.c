@@ -24,6 +24,8 @@
 #include "EventOS.h"
 #include "event.h"
 
+#include "Log.h"
+
 /*********************************************************
     private constants.
 *********************************************************/
@@ -185,6 +187,8 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 
 	pxECB->xEventType = uxEventType;
 	pxECB->xEventPriority = uxEventPriority;
+	pxECB->pvPayload = NULL;
+	pxECB->xPayloadSize = 0;
 
 	/*Easier to access and run over the subscribers list*/
 	pxECB->pxSubscriberList = (& pxSubscriberLists[ uxEventType ]);
@@ -196,7 +200,6 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 	listSET_LIST_NODE_OWNER((xListNode*) &( pxECB->xEventListNode ), pxECB );
 	/* Event lists are always in priority order. */
 	listSET_LIST_NODE_VALUE( &( pxECB->xEventListNode ), ( portBASE_TYPE ) prxEvent_getProcessStamp());
-
 }
 
 __PRIVATE_ void prvEvent_incrementProcessStamp( void )
@@ -297,8 +300,14 @@ signed portBASE_TYPE xEvent_publish (portBASE_TYPE xEventType, portBASE_TYPE xPr
 	{
 		prvEvent_initializeECBVariables( pxNewEvent, xEventType, xPriority );
 
-		pxNewEvent->pvPayload = pvPayload;
-		pxNewEvent->xPayloadSize = xPayloadSize;
+		if( pvPayload != NULL )
+		{
+			pxNewEvent->pvPayload = malloc( xPayloadSize * sizeof( portCHAR ) );
+			memcpy( pxNewEvent->pvPayload, pvPayload, xPayloadSize );
+			pxNewEvent->xPayloadSize = xPayloadSize;
+
+			//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[EventOS] Malloc: %p", pxNewEvent->pvPayload );
+		}
 
 		portDISABLE_INTERRUPTS();
 		{
@@ -490,6 +499,8 @@ __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB )
 	the task to free any memory allocated at the application level. */
 	if( pxECB->pvPayload != NULL )
 	{
+		//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[EventOS] Free: %p", pxECB->pvPayload );
+
 		vPortFree( pxECB->pvPayload );
 		pxECB->pvPayload = NULL;
 	}
