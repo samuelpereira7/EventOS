@@ -24,20 +24,23 @@ void Application_initI2C(void);
 void Application_initSysTick(void);
 void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize);
 void Application_receiveLight(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize);
+void Application_createdEventCallback(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize);
 
 volatile portULONG msTicks; // counter for 1ms Applications
 
 void SysTick_Handler(void)
 {
-
 	msTicks++;
+
+	int var = msTicks;
 
 	//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"Handling new Application interrupt\n");
 
 	if(msTicks % 1000 == 0)
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: TICK");
-		xEvent_publish(EVENT_SYS_TICK, EVENT_PRIORITY_LOW, NULL, 0);
+		//xEvent_publish(EVENT_SYS_TICK, EVENT_PRIORITY_LOW, NULL, 0);
+		xEvent_publish(21, EVENT_PRIORITY_HIGH, &var, sizeof(var) );
 		//xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_SYS_UART, EVENT_PRIORITY_MEDIUM, NULL, 0);
@@ -86,6 +89,12 @@ void Application_new(void)
 
 	led2_init();
 	light_enable();
+
+	int id_newEvent = uxEvent_createEvent("Samuel", 6);
+
+	xEvent_subscribe(Application_createdEventCallback,
+						id_newEvent,
+						NULL);
 
 	xEvent_subscribe(Application_receiveNewEvent,
 					 EVENT_SYS_TICK,
@@ -152,6 +161,13 @@ void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void*
 			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_ERROR,"[app] Event not expected");
 			break;
 	}
+}
+
+void Application_createdEventCallback(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize)
+{
+	int32_t* iValue = (int32_t*)pvPayload;
+
+	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] xxxx Received data from created event: %d", *iValue);
 }
 
 portULONG Application_getMsTicks(void)

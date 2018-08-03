@@ -65,7 +65,8 @@ typedef struct evtSubscriber
 
 /* Lists for events and event handlers. --------------------*/
 __PRIVATE_ xList pxEventsLists[ EVENT_PRIORITY_LAST ];	/*< Prioritized events. */
-__PRIVATE_ xList pxSubscriberLists[ EVENT_TYPE_LAST ];	/*< Event handler separated by event types. */
+__PRIVATE_ xList pxSubscriberLists[ EVENT_TOTAL_EVENTS ];	/*< Event handler separated by event types. */
+__PRIVATE_ portCHAR* pcEventNameList[ EVENT_TOTAL_EVENTS ];
 
 
 /*********************************************************
@@ -79,6 +80,7 @@ __PRIVATE_ evtECB* volatile pxCurrentECB = NULL;
 __PRIVATE_ volatile portUBASE_TYPE uxCurrentNumberOfEvents 	= 		( portUBASE_TYPE ) 0;
 __PRIVATE_ volatile portUBASE_TYPE uxCurrentNumberOfSubscribers =	( portUBASE_TYPE ) 0;
 __PRIVATE_ volatile portUBASE_TYPE uxProcessStamp = 				( portUBASE_TYPE ) 0;
+__PRIVATE_ volatile portUBASE_TYPE uxNumberOfEventsCreated =		( portUBASE_TYPE ) EVENT_TYPE_LAST;
 
 
 /*********************************************************
@@ -104,11 +106,12 @@ __PRIVATE_ volatile portUBASE_TYPE uxProcessStamp = 				( portUBASE_TYPE ) 0;
 #define prvEvent_removeEventFromList( pxECB ) vList_remove( &( pxECB->xEventListNode ) );	\
 
 
-__PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB );
 __PRIVATE_ void prvEvent_initializeEventLists( void );
 __PRIVATE_ void prvEvent_initializeSubscriberLists( void );
+__PRIVATE_ void prvEvent_initializeEventNameList( void );
 __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber );
 __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority );
+__PRIVATE_ portBASE_TYPE prxEvent_checkEventType( portBASE_TYPE xEventType );
 __PRIVATE_ void prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portUBASE_TYPE prxEvent_getProcessStamp( void );
 __PRIVATE_ void prvEvent_updateLifeTime( void );
@@ -141,11 +144,25 @@ __PRIVATE_ void prvEvent_initializeEventLists( void )
 
 __PRIVATE_ void prvEvent_initializeSubscriberLists( void )
 {
-	unsigned portBASE_TYPE ulEventType;
+	portUBASE_TYPE uxEventType;
 
-	for( ulEventType = 0; ulEventType < EVENT_TYPE_LAST; ulEventType++ )
+	/* The initialization of this list should be done just for default events (see enum "tenuEventType" in "portmacro.h" file).
+	 * This operation is performed automatically for events created at run-time (see function "uxEvent_createEvent").
+	 */
+	for( uxEventType = 0; uxEventType < EVENT_TYPE_LAST; uxEventType++ )
 	{
-		vList_initialize( ( xList* ) &( pxSubscriberLists[ ulEventType ] ) );
+		vList_initialize( ( xList* ) &( pxSubscriberLists[ uxEventType ] ) );
+	}
+}
+
+__PRIVATE_ void prvEvent_initializeEventNameList( void )
+{
+	portUBASE_TYPE uxEventType;
+
+	/* The initialization is done for the entire list (for the default events and for those that can be created. */
+	for( uxEventType = 0; uxEventType < EVENT_TOTAL_EVENTS; uxEventType++ )
+	{
+		pcEventNameList[ uxEventType ] = NULL;
 	}
 }
 
@@ -153,9 +170,9 @@ __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( xEventType >= EVENT_TYPE_LAST )
+	if( xEventType > uxNumberOfEventsCreated )
 	{
-		xEventType = EVENT_TYPE_LAST - 1;
+		xEventType = EVENT_TYPE_UNKNOWN;
 	}
 
 	pxSCB->xEventType = xEventType;
@@ -173,9 +190,9 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( uxEventType >= EVENT_TYPE_LAST )
+	if( uxEventType > uxNumberOfEventsCreated )
 	{
-		uxEventType = EVENT_TYPE_LAST - 1;
+		uxEventType = EVENT_TYPE_UNKNOWN;
 	}
 
 	/* This is used as an array index so must ensure it's not too large.  First
@@ -202,6 +219,12 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 	listSET_LIST_NODE_VALUE( &( pxECB->xEventListNode ), ( portBASE_TYPE ) prxEvent_getProcessStamp());
 }
 
+__PRIVATE_ portBASE_TYPE prxEvent_checkEventType( portBASE_TYPE xEventType )
+{
+	if( xEventType <= uxNumberOfEventsCreated ) return pdTRUE;
+	else return pdFALSE;
+}
+
 __PRIVATE_ void prvEvent_incrementProcessStamp( void )
 {
 	uxProcessStamp++;
@@ -224,6 +247,9 @@ void vEvent_startScheduler( void )
 	/* Initialize the event list before scheduler start */
 	prvEvent_initializeEventLists();
 
+	/* Initialize the list of event names before scheduler start */
+	prvEvent_initializeEventNameList();
+
 	/* Setting up the system for sleep mode in the specific. */
 	if( xPortStartScheduler() )
 	{
@@ -235,6 +261,36 @@ void vEvent_startScheduler( void )
 		/* Error */
 	}
 }
+
+/**
+	This method creates new events. Such events can be used later on.
+
+	@param     pcEventName: event name
+			   uxNameLength: length of the event name
+	@return portUBASE_TYPE - identifier (type) of the new event
+	@author samuelpereira7
+	@date   02/08/2018
+*/
+portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
+{
+	if( pcEventName == NULL ) return pdFAIL;
+	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
+	if( uxNumberOfEventsCreated > EVENT_TOTAL_EVENTS) return pdFAIL;
+
+	portBASE_TYPE xIndex = uxNumberOfEventsCreated + 1;
+
+	/* initializing the list of subscribers of the new event */
+	vList_initialize( ( xList* ) &( pxSubscriberLists[ xIndex ] ) );
+
+	/* saving the event name */
+	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength );
+	strncpy( (portCHAR*) &pcEventNameList[ xIndex ], pcEventName, uxNameLength );
+
+	uxNumberOfEventsCreated++;
+
+	return uxNumberOfEventsCreated;
+}
+
 
 /*
 	Event subscribe. Function subscribes a event handler to receive notifications about as specific event
@@ -248,8 +304,8 @@ void vEvent_startScheduler( void )
 */
 signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber)
 {
-	if(ulEventType >= (portBASE_TYPE)EVENT_TYPE_LAST) return pdFALSE;
-	if(!pFunction) return pdFALSE;
+	if( ulEventType > ( portBASE_TYPE ) uxNumberOfEventsCreated ) return pdFALSE;
+	if( !pFunction ) return pdFALSE;
 
 	signed portBASE_TYPE xReturn = pdFALSE;
 
@@ -290,8 +346,8 @@ signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portB
 
 signed portBASE_TYPE xEvent_publish (portBASE_TYPE xEventType, portBASE_TYPE xPriority, void* pvPayload, portBASE_TYPE xPayloadSize)
 {
-	if (xEventType >= EVENT_TYPE_LAST) return pdFALSE;
-	if (xPriority >= EVENT_PRIORITY_LAST) return pdFALSE;
+	if( xEventType > uxNumberOfEventsCreated ) return pdFALSE;
+	if( xPriority >= EVENT_PRIORITY_LAST ) return pdFALSE;
 
 	portBASE_TYPE xStatus = pdFALSE;
 

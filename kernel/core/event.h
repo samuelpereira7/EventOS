@@ -71,6 +71,11 @@ typedef enum enu_Events
 	EVENT_TYPE_LAST
 }tenuEventType;
 
+#define EVENT_RUNTIME_EVENTS	10
+
+#define EVENT_TOTAL_EVENTS     	( EVENT_TYPE_LAST + EVENT_RUNTIME_EVENTS )
+
+#define EVENT_NAME_MAX_LEN		10
 
 typedef enum enu_Priorities
 {
@@ -90,6 +95,7 @@ typedef void (*pdEVENT_HANDLER_FUNCTION)( portBASE_TYPE, void*, void*, portBASE_
 *********************************************************/
 
 void 					vEvent_startScheduler( void );
+portUBASE_TYPE			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
 signed portBASE_TYPE 	xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE	ulEventType, void* pvSubscriber);
 signed portBASE_TYPE 	xEvent_publish (portBASE_TYPE ulEventType, portBASE_TYPE ulPriority, void* pvPayload, portBASE_TYPE ulPayloadSize);
 portCHAR*  				pxEvent_getVersion(void);
