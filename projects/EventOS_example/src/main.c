@@ -10,7 +10,6 @@
 #include "EventOS.h"
 #include "event.h"
 
-
 #include "Application.h"
 #include "Log.h"
 

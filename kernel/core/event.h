@@ -96,9 +96,10 @@ typedef void (*pdEVENT_HANDLER_FUNCTION)( portBASE_TYPE, void*, void*, portBASE_
 
 void 					vEvent_startScheduler( void );
 portUBASE_TYPE			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
-signed portBASE_TYPE 	xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE	ulEventType, void* pvSubscriber);
-signed portBASE_TYPE 	xEvent_publish (portBASE_TYPE ulEventType, portBASE_TYPE ulPriority, void* pvPayload, portBASE_TYPE ulPayloadSize);
-portCHAR*  				pxEvent_getVersion(void);
+portUBASE_TYPE			uxEvent_getEventID( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
+signed portBASE_TYPE 	xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE	ulEventType, void* pvSubscriber );
+signed portBASE_TYPE 	xEvent_publish( portBASE_TYPE ulEventType, portBASE_TYPE ulPriority, void* pvPayload, portBASE_TYPE ulPayloadSize );
+portCHAR*  				pxEvent_getVersion( void );
 
 /*-----------------------------------------------------------
  * SCHEDULER INTERNALS AVAILABLE FOR PORTING PURPOSES

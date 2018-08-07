@@ -160,7 +160,7 @@ __PRIVATE_ void prvEvent_initializeEventNameList( void )
 	portUBASE_TYPE uxEventType;
 
 	/* The initialization is done for the entire list (for the default events and for those that can be created. */
-	for( uxEventType = 0; uxEventType < EVENT_TOTAL_EVENTS; uxEventType++ )
+	for( uxEventType = 0; uxEventType < EVENT_TYPE_LAST; uxEventType++ )
 	{
 		pcEventNameList[ uxEventType ] = NULL;
 	}
@@ -262,12 +262,13 @@ void vEvent_startScheduler( void )
 	}
 }
 
+
 /**
 	This method creates new events. Such events can be used later on.
 
 	@param     pcEventName: event name
 			   uxNameLength: length of the event name
-	@return portUBASE_TYPE - identifier (type) of the new event
+	@return portUBASE_TYPE - identifier (type) of the new event or pdFAIL in case of failure
 	@author samuelpereira7
 	@date   02/08/2018
 */
@@ -284,11 +285,40 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 
 	/* saving the event name */
 	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength );
-	strncpy( (portCHAR*) &pcEventNameList[ xIndex ], pcEventName, uxNameLength );
+	strncpy( (portCHAR*) pcEventNameList[ xIndex ], pcEventName, uxNameLength + 1 );
 
 	uxNumberOfEventsCreated++;
 
 	return uxNumberOfEventsCreated;
+}
+
+
+/**
+	This method searches for a an event by its name.
+ 	@param     pcEventName: event name
+			   uxNameLength: length of the event name
+	@return portUBASE_TYPE - identifier (type) of the new event or pdFAIL in case of failure
+	@author samuelpereira7
+	@date   07/08/2018
+*/
+portUBASE_TYPE uxEvent_getEventID( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
+{
+	if( pcEventName == NULL ) return pdFAIL;
+	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
+
+ 	portBASE_TYPE xIndex;
+	portUBASE_TYPE uxReturnValue = pdFAIL;
+
+ 	for( xIndex = EVENT_TYPE_LAST + 1; xIndex <= uxNumberOfEventsCreated; xIndex++ )
+	{
+		if( strncmp( pcEventNameList[ xIndex ], pcEventName, uxNameLength ) == 0 )
+		{
+			uxReturnValue = xIndex;
+			break;
+		}
+	}
+
+ 	return uxReturnValue;
 }
 
 

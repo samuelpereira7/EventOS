@@ -3,6 +3,7 @@
 #include <NXP/crp.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "event.h"
 
@@ -32,27 +33,29 @@ void SysTick_Handler(void)
 {
 	msTicks++;
 
-	int var = msTicks;
+	long id;
+	portULONG xVar = msTicks;
 
 	//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"Handling new Application interrupt\n");
 
-	if(msTicks % 1000 == 0)
+	if( msTicks % 1000 == 0 )
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: TICK");
 		//xEvent_publish(EVENT_SYS_TICK, EVENT_PRIORITY_LOW, NULL, 0);
-		xEvent_publish(21, EVENT_PRIORITY_HIGH, &var, sizeof(var) );
+		id = uxEvent_getEventID( "myevent3", strlen( "myevent3" ) );
+		xEvent_publish( id, EVENT_PRIORITY_HIGH, &xVar, sizeof( xVar ) );
 		//xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_SYS_UART, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_SYS_USB, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
 	}
-	if(msTicks % 5000 == 0)
+	if( msTicks % 5000 == 0 )
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: ETHERNET");
 		xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
 	}
-	if(msTicks % 10000 == 0)
+	if( msTicks % 10000 == 0 )
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: Application");
 		xEvent_publish(EVENT_SYS_SYSTICK, EVENT_PRIORITY_HIGH, NULL, 0);
@@ -85,30 +88,34 @@ void Application_initI2C(void)
 
 void Application_new(void)
 {
+	char* evt1 = "myevent1";
+	char* evt2 = "myevent2";
+	char* evt3 = "myevent3";
+	char* evt4 = "myevent4";
+	long id_in;
+	long id_out;
+
 	Application_initI2C();
 
 	led2_init();
 	light_enable();
 
-	int id_newEvent = uxEvent_createEvent("Samuel", 6);
+	id_in = uxEvent_createEvent( evt1, strlen( evt1 ) );
+	id_in = uxEvent_createEvent( evt2, strlen( evt2 ) );
+	id_in = uxEvent_createEvent( evt3, strlen( evt3 ) );
+	id_in = uxEvent_createEvent( evt4, strlen( evt4 ) );
 
-	xEvent_subscribe(Application_createdEventCallback,
-						id_newEvent,
-						NULL);
+	id_out = uxEvent_getEventID( evt3, strlen( evt1 ) );
 
-	xEvent_subscribe(Application_receiveNewEvent,
-					 EVENT_SYS_TICK,
-					 NULL);
+	if( id_out != pdFAIL )
+	{
+		xEvent_subscribe( Application_createdEventCallback, id_out, NULL );
+	}
 
-	xEvent_subscribe(Application_receiveNewEvent,
-						 EVENT_SYS_SYSTICK,
-						 NULL);
-
-	xEvent_subscribe(Application_receiveNewEvent,
-							 EVENT_SYS_ETHERNET,
-							 NULL);
-
-	xEvent_subscribe(Application_receiveLight, EVENT_APP_LIGHT, NULL);
+	xEvent_subscribe( Application_receiveNewEvent, EVENT_SYS_TICK, NULL );
+	xEvent_subscribe( Application_receiveNewEvent, EVENT_SYS_SYSTICK, NULL );
+	xEvent_subscribe( Application_receiveNewEvent, EVENT_SYS_ETHERNET, NULL );
+	xEvent_subscribe( Application_receiveLight, EVENT_APP_LIGHT, NULL );
 
 	led2_on();
 
