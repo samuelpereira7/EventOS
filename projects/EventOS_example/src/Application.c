@@ -20,12 +20,12 @@
     private operations.
 *********************************************************/
 
-void Application_init(void);
-void Application_initI2C(void);
-void Application_initSysTick(void);
-void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize);
-void Application_receiveLight(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize);
-void Application_createdEventCallback(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize);
+void Application_init( void );
+void Application_initI2C( void );
+void Application_initSysTick( void );
+void Application_receiveNewEvent( portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_receiveLight( portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_createdEventCallback( portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
 volatile portULONG msTicks; // counter for 1ms Applications
 
@@ -86,7 +86,7 @@ void Application_initI2C(void)
 }
 
 
-void Application_new(void)
+void Application_new( void )
 {
 	char* evt1 = "myevent1";
 	char* evt2 = "myevent2";
@@ -123,9 +123,8 @@ void Application_new(void)
 }
 
 
-void Application_initSysTick(void)
+void Application_initSysTick( void )
 {
-
 	// Setup Systick Timer to interrupt at 1 msec intervals
 	if (SysTick_Config(SystemCoreClock/1000))
 	{
@@ -134,7 +133,7 @@ void Application_initSysTick(void)
 	return;
 }
 
-void Application_delete(void)
+void Application_delete( void )
 {
 
 }

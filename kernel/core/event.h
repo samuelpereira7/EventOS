@@ -88,7 +88,7 @@ typedef enum enu_Priorities
 }tenuEventPriority;
 
 /* Defines the prototype to which event handler functions must conform. */
-typedef void (*pdEVENT_HANDLER_FUNCTION)( portBASE_TYPE, void*, void*, portBASE_TYPE );
+typedef void ( *pdEVENT_HANDLER_FUNCTION )( portBASE_TYPE, void*, void*, portBASE_TYPE );
 
 /*********************************************************
     Public Operations
@@ -97,8 +97,8 @@ typedef void (*pdEVENT_HANDLER_FUNCTION)( portBASE_TYPE, void*, void*, portBASE_
 void 					vEvent_startScheduler( void );
 portUBASE_TYPE			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
 portUBASE_TYPE			uxEvent_getEventID( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
-signed portBASE_TYPE 	xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE	ulEventType, void* pvSubscriber );
-signed portBASE_TYPE 	xEvent_publish( portBASE_TYPE ulEventType, portBASE_TYPE ulPriority, void* pvPayload, portBASE_TYPE ulPayloadSize );
+signed portBASE_TYPE 	xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pFunction, portUBASE_TYPE uxEventType, void* pvSubscriber );
+signed portBASE_TYPE	xEvent_publish( portUBASE_TYPE uxEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize );
 portCHAR*  				pxEvent_getVersion( void );
 
 /*-----------------------------------------------------------

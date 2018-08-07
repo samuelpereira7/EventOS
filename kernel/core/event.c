@@ -332,10 +332,10 @@ portUBASE_TYPE uxEvent_getEventID( portCHAR* pcEventName, portUBASE_TYPE uxNameL
     @author Edielson
     @date   15/09/2017
 */
-signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber)
+signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, portUBASE_TYPE uxEventType, void* pvSubscriber )
 {
-	if( ulEventType > ( portBASE_TYPE ) uxNumberOfEventsCreated ) return pdFALSE;
-	if( !pFunction ) return pdFALSE;
+	if( uxEventType > ( portBASE_TYPE ) uxNumberOfEventsCreated ) return pdFALSE;
+	if( !pvFunction ) return pdFALSE;
 
 	signed portBASE_TYPE xReturn = pdFALSE;
 
@@ -343,7 +343,7 @@ signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portB
 	if(pxNewSubscriber)
 	{
 		/*Initializing variables*/
-		prvEvent_initializeSCBVariables(pxNewSubscriber,pFunction,ulEventType,pvSubscriber);
+		prvEvent_initializeSCBVariables( pxNewSubscriber, pvFunction, uxEventType, pvSubscriber );
 
 		portDISABLE_INTERRUPTS();
 		{
@@ -374,17 +374,17 @@ signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portB
     @date   22/09/2014
 */
 
-signed portBASE_TYPE xEvent_publish (portBASE_TYPE xEventType, portBASE_TYPE xPriority, void* pvPayload, portBASE_TYPE xPayloadSize)
+signed portBASE_TYPE xEvent_publish( portUBASE_TYPE uxEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize )
 {
-	if( xEventType > uxNumberOfEventsCreated ) return pdFALSE;
-	if( xPriority >= EVENT_PRIORITY_LAST ) return pdFALSE;
+	if( uxEventType > uxNumberOfEventsCreated ) return pdFALSE;
+	if( uxPriority >= EVENT_PRIORITY_LAST ) return pdFALSE;
 
 	portBASE_TYPE xStatus = pdFALSE;
 
 	evtECB* pxNewEvent = (evtECB*)pvPortMalloc(sizeof(evtECB));
 	if(pxNewEvent)
 	{
-		prvEvent_initializeECBVariables( pxNewEvent, xEventType, xPriority );
+		prvEvent_initializeECBVariables( pxNewEvent, uxEventType, uxPriority );
 
 		if( pvPayload != NULL )
 		{
