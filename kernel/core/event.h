@@ -93,7 +93,7 @@ typedef void ( *pdEVENT_HANDLER_FUNCTION )( portBASE_TYPE, void*, void*, portBAS
 /*********************************************************
     Public Operations
 *********************************************************/
-
+void					vEvent_initSystem( void );
 void 					vEvent_startScheduler( void );
 portUBASE_TYPE			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
 portUBASE_TYPE			uxEvent_getEventID( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );

@@ -41,8 +41,9 @@
 typedef struct evtEventControlBlock
 {
 	xListNode				xEventListNode;							/*< List node used to place the event in the list. */
-	portBASE_TYPE			xEventPriority;						/*< The priority of the event where 0 is the lowest priority. */
+	portBASE_TYPE			xEventPriority;							/*< The priority of the event where 0 is the lowest priority. */
 	portBASE_TYPE			xEventType;
+	portHASH_TYPE			xHash;
 	signed char				pcEventName[configMAX_EVENT_NAME_LEN];	/*< Descriptive name given to the event when created.  Facilitates debugging only. */
 
 	xList*					pxSubscriberList;						/*< Pointer to the list of event handlers >*/
@@ -67,6 +68,7 @@ typedef struct evtSubscriber
 __PRIVATE_ xList pxEventsLists[ EVENT_PRIORITY_LAST ];	/*< Prioritized events. */
 __PRIVATE_ xList pxSubscriberLists[ EVENT_TOTAL_EVENTS ];	/*< Event handler separated by event types. */
 __PRIVATE_ portCHAR* pcEventNameList[ EVENT_TOTAL_EVENTS ];
+__PRIVATE_ portHASH_TYPE pxHashList[ EVENT_TOTAL_EVENTS ];
 
 
 /*********************************************************
@@ -109,8 +111,10 @@ __PRIVATE_ volatile portUBASE_TYPE uxNumberOfEventsCreated =		( portUBASE_TYPE )
 __PRIVATE_ void prvEvent_initializeEventLists( void );
 __PRIVATE_ void prvEvent_initializeSubscriberLists( void );
 __PRIVATE_ void prvEvent_initializeEventNameList( void );
+__PRIVATE_ void prvEvent_initializeHashList( void );
 __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber );
 __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority );
+__PRIVATE_ portUBASE_TYPE uxEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght );
 __PRIVATE_ portBASE_TYPE prxEvent_checkEventType( portBASE_TYPE xEventType );
 __PRIVATE_ void prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portUBASE_TYPE prxEvent_getProcessStamp( void );
@@ -160,9 +164,20 @@ __PRIVATE_ void prvEvent_initializeEventNameList( void )
 	portUBASE_TYPE uxEventType;
 
 	/* The initialization is done for the entire list (for the default events and for those that can be created. */
-	for( uxEventType = 0; uxEventType < EVENT_TYPE_LAST; uxEventType++ )
+	for( uxEventType = 0; uxEventType < EVENT_TOTAL_EVENTS; uxEventType++ )
 	{
 		pcEventNameList[ uxEventType ] = NULL;
+	}
+}
+
+__PRIVATE_ void prvEvent_initializeHashList( void )
+{
+	portUBASE_TYPE uxEventType;
+
+	/* The initialization is done for the entire list (for the default events and for those that can be created. */
+	for( uxEventType = 0; uxEventType < EVENT_TOTAL_EVENTS; uxEventType++ )
+	{
+		pxHashList[ uxEventType ] = 0;
 	}
 }
 
@@ -188,6 +203,8 @@ __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_
 
 __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority )
 {
+	portHASH_TYPE xHash;
+
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
 	if( uxEventType > uxNumberOfEventsCreated )
@@ -207,6 +224,18 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 	pxECB->pvPayload = NULL;
 	pxECB->xPayloadSize = 0;
 
+	/*
+xHashh = uxEvent_calculateHash( pcEventNameList[ uxEventType ], strlen( pcEventNameList[ uxEventType ] ) );
+	if(xHashh != pdFAIL )
+	{
+		pxECB-xHashh =xHashh;
+	}
+	else
+	{
+		while(1);
+	}
+	*/
+
 	/*Easier to access and run over the subscribers list*/
 	pxECB->pxSubscriberList = (& pxSubscriberLists[ uxEventType ]);
 
@@ -217,6 +246,29 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 	listSET_LIST_NODE_OWNER((xListNode*) &( pxECB->xEventListNode ), pxECB );
 	/* Event lists are always in priority order. */
 	listSET_LIST_NODE_VALUE( &( pxECB->xEventListNode ), ( portBASE_TYPE ) prxEvent_getProcessStamp());
+}
+
+
+__PRIVATE_ portUBASE_TYPE uxEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght )
+{
+	/* Random hashing implementation. Change it for the love of God. */
+	if( pcArray == NULL ) return pdFAIL;
+	if( xArrayLenght <= 0 ) return pdFAIL;
+
+	portUBASE_TYPE xHash = 377767;
+	portBASE_TYPE xIndex;
+
+	for( xIndex = 0; xIndex < xArrayLenght; xIndex++ )
+	{
+		xHash *= pcArray[ xIndex ];
+	}
+
+	if( xHash == 0 )
+	{
+		xHash = 52341235;
+	}
+
+	return xHash;
 }
 
 __PRIVATE_ portBASE_TYPE prxEvent_checkEventType( portBASE_TYPE xEventType )
@@ -230,9 +282,33 @@ __PRIVATE_ void prvEvent_incrementProcessStamp( void )
 	uxProcessStamp++;
 }
 
+/**
+	This function initialize all the components of the system.
+	It must be called before the scheduler starter function.
+
+    @param void
+    @return void
+    @author samuelpereira7
+    @date   07/08/2018
+*/
+void vEvent_initSystem( void )
+{
+	/* Start RTC */
+	portSTART_RTC();
+
+	/* Initialize the event list before scheduler starts */
+	prvEvent_initializeEventLists();
+
+	/* Initialize the list of event names before scheduler starts */
+	prvEvent_initializeEventNameList();
+
+	/* Initialize the list of hash before scheduler starts */
+	prvEvent_initializeHashList();
+}
 
 /**
 	Event start scheduler. This is the method that starts the scheduler process.
+	It must be called after the system initializer function.
 
     @param void
     @return void
@@ -241,15 +317,6 @@ __PRIVATE_ void prvEvent_incrementProcessStamp( void )
 */
 void vEvent_startScheduler( void )
 {
-	/* Start RTC */
-	portSTART_RTC();
-
-	/* Initialize the event list before scheduler start */
-	prvEvent_initializeEventLists();
-
-	/* Initialize the list of event names before scheduler start */
-	prvEvent_initializeEventNameList();
-
 	/* Setting up the system for sleep mode in the specific. */
 	if( xPortStartScheduler() )
 	{

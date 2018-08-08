@@ -17,6 +17,8 @@ int main()
 {
 	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, (char*)pxEvent_getVersion());
 
+	vEvent_initSystem();
+
 	Application_new();
 
 	vEvent_startScheduler();

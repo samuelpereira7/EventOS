@@ -52,6 +52,8 @@ extern "C" {
 #define portMAX_BASETYPE 	( portBASE_TYPE ) 0x7fffffff
 #define portMAX_UBASETYPE	( portUBASE_TYPE ) 0xffffffff
 
+#define portHASH_TYPE	portULONG
+
 #define pdTRUE		( 1 )
 #define pdFALSE		( 0 )
 #define pdPASS		pdTRUE
