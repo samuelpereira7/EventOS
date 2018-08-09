@@ -43,7 +43,6 @@ typedef struct evtEventControlBlock
 	xListNode				xEventListNode;							/*< List node used to place the event in the list. */
 	portBASE_TYPE			xEventPriority;							/*< The priority of the event where 0 is the lowest priority. */
 	portBASE_TYPE			xEventType;
-	portHASH_TYPE			xHash;
 	signed char				pcEventName[configMAX_EVENT_NAME_LEN];	/*< Descriptive name given to the event when created.  Facilitates debugging only. */
 
 	xList*					pxSubscriberList;						/*< Pointer to the list of event handlers >*/
@@ -114,7 +113,7 @@ __PRIVATE_ void prvEvent_initializeEventNameList( void );
 __PRIVATE_ void prvEvent_initializeHashList( void );
 __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber );
 __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority );
-__PRIVATE_ portUBASE_TYPE uxEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght );
+__PRIVATE_ portHASH_TYPE xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght );
 __PRIVATE_ portBASE_TYPE prxEvent_checkEventType( portBASE_TYPE xEventType );
 __PRIVATE_ void prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portUBASE_TYPE prxEvent_getProcessStamp( void );
@@ -203,8 +202,6 @@ __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_
 
 __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority )
 {
-	portHASH_TYPE xHash;
-
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
 	if( uxEventType > uxNumberOfEventsCreated )
@@ -224,18 +221,6 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 	pxECB->pvPayload = NULL;
 	pxECB->xPayloadSize = 0;
 
-	/*
-xHashh = uxEvent_calculateHash( pcEventNameList[ uxEventType ], strlen( pcEventNameList[ uxEventType ] ) );
-	if(xHashh != pdFAIL )
-	{
-		pxECB-xHashh =xHashh;
-	}
-	else
-	{
-		while(1);
-	}
-	*/
-
 	/*Easier to access and run over the subscribers list*/
 	pxECB->pxSubscriberList = (& pxSubscriberLists[ uxEventType ]);
 
@@ -249,7 +234,7 @@ xHashh = uxEvent_calculateHash( pcEventNameList[ uxEventType ], strlen( pcEventN
 }
 
 
-__PRIVATE_ portUBASE_TYPE uxEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght )
+__PRIVATE_ portHASH_TYPE xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght )
 {
 	/* Random hashing implementation. Change it for the love of God. */
 	if( pcArray == NULL ) return pdFAIL;
@@ -346,6 +331,7 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 	if( uxNumberOfEventsCreated > EVENT_TOTAL_EVENTS) return pdFAIL;
 
 	portBASE_TYPE xIndex = uxNumberOfEventsCreated + 1;
+	portHASH_TYPE xHash = 0;
 
 	/* initializing the list of subscribers of the new event */
 	vList_initialize( ( xList* ) &( pxSubscriberLists[ xIndex ] ) );
@@ -353,6 +339,18 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 	/* saving the event name */
 	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength );
 	strncpy( (portCHAR*) pcEventNameList[ xIndex ], pcEventName, uxNameLength + 1 );
+
+	/* saving the event name hash */
+	xHash = xEvent_calculateHash( pcEventNameList[ xIndex ], strlen( pcEventNameList[ xIndex ] ) );
+
+	if( xHash != pdFAIL )
+	{
+		pxHashList[ xIndex ] = xHash;
+	}
+	else
+	{
+		while(1);
+	}
 
 	uxNumberOfEventsCreated++;
 
@@ -375,14 +373,20 @@ portUBASE_TYPE uxEvent_getEventID( portCHAR* pcEventName, portUBASE_TYPE uxNameL
 
  	portBASE_TYPE xIndex;
 	portUBASE_TYPE uxReturnValue = pdFAIL;
+	portHASH_TYPE xHash = 0;
+
+	xHash = xEvent_calculateHash( pcEventName, uxNameLength );
 
  	for( xIndex = EVENT_TYPE_LAST + 1; xIndex <= uxNumberOfEventsCreated; xIndex++ )
 	{
-		if( strncmp( pcEventNameList[ xIndex ], pcEventName, uxNameLength ) == 0 )
-		{
-			uxReturnValue = xIndex;
-			break;
-		}
+ 		if( pxHashList[ xIndex ] == xHash )
+ 		{
+ 			if( strncmp( pcEventNameList[ xIndex ], pcEventName, uxNameLength ) == 0 )
+			{
+				uxReturnValue = xIndex;
+				break;
+			}
+ 		}
 	}
 
  	return uxReturnValue;
