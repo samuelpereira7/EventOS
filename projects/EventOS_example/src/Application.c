@@ -23,9 +23,9 @@
 void Application_init( void );
 void Application_initI2C( void );
 void Application_initSysTick( void );
-void Application_receiveNewEvent( portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
-void Application_receiveLight( portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
-void Application_createdEventCallback( portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_receiveNewEvent( portBASE_TYPE EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_receiveLight( portBASE_TYPE EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_createdEventCallback( portBASE_TYPE EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
 volatile portULONG msTicks; // counter for 1ms Applications
 
@@ -138,14 +138,14 @@ void Application_delete( void )
 
 }
 
-void Application_receiveLight(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
+void Application_receiveLight(portBASE_TYPE EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
 {
 	int32_t* iLight = (int32_t*)pvPayload;
 
 	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Received light: %d", *iLight);
 }
 
-void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
+void Application_receiveNewEvent(portBASE_TYPE EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
 {
 	portBASE_TYPE xLight;
 
@@ -169,11 +169,11 @@ void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void*
 	}
 }
 
-void Application_createdEventCallback(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize)
+void Application_createdEventCallback( portBASE_TYPE EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize )
 {
-	int32_t* iValue = (int32_t*)pvPayload;
+	int32_t* iValue = ( int32_t* ) pvPayload;
 
-	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] xxxx Received data from created event: %d", *iValue);
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] xxxx Received data from created event: %d; Event name: [%s]", *iValue, EventName );
 }
 
 portULONG Application_getMsTicks(void)
