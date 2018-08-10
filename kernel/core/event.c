@@ -337,7 +337,7 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 	vList_initialize( ( xList* ) &( pxSubscriberLists[ xIndex ] ) );
 
 	/* saving the event name */
-	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength );
+	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength + 1 );
 	strncpy( (portCHAR*) pcEventNameList[ xIndex ], pcEventName, uxNameLength + 1 );
 
 	/* saving the event name hash */
