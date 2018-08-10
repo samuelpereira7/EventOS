@@ -336,23 +336,34 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 	/* initializing the list of subscribers of the new event */
 	vList_initialize( ( xList* ) &( pxSubscriberLists[ xIndex ] ) );
 
-	/* saving the event name */
 	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength + 1 );
-	strncpy( (portCHAR*) pcEventNameList[ xIndex ], pcEventName, uxNameLength + 1 );
 
-	/* saving the event name hash */
-	xHash = xEvent_calculateHash( pcEventNameList[ xIndex ], strlen( pcEventNameList[ xIndex ] ) );
-
-	if( xHash != pdFAIL )
+	if( pcEventNameList[ xIndex ] != NULL )
 	{
-		pxHashList[ xIndex ] = xHash;
+		/* saving the event name */
+		strncpy( (portCHAR*) pcEventNameList[ xIndex ], pcEventName, uxNameLength + 1 );
+
+		xHash = xEvent_calculateHash( pcEventNameList[ xIndex ], strlen( pcEventNameList[ xIndex ] ) );
+
+		if( xHash != pdFAIL )
+		{
+			/* saving the hash of the event name */
+			pxHashList[ xIndex ] = xHash;
+			uxNumberOfEventsCreated++;
+		}
+		else
+		{
+			/* wild error, aborting */
+			free( pcEventNameList[ xIndex ] );
+			pcEventNameList[ xIndex ] = NULL;
+
+			return pdFAIL;
+		}
 	}
 	else
 	{
-		while(1);
+		return pdFAIL;
 	}
-
-	uxNumberOfEventsCreated++;
 
 	return uxNumberOfEventsCreated;
 }
