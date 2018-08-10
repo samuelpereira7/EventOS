@@ -88,8 +88,8 @@ typedef enum enu_Priorities
 }tenuEventPriority;
 
 /* Defines the prototype to which event handler functions must conform.
- * Parameters: event type, subscribe handler, event payload, size of event payload */
-typedef void ( *pdEVENT_HANDLER_FUNCTION )( portBASE_TYPE, void*, void*, portBASE_TYPE );
+ * Parameters: event type, event name, subscribe handler, event payload, size of event payload */
+typedef void ( *pdEVENT_HANDLER_FUNCTION )( portBASE_TYPE, char*, void*, void*, portBASE_TYPE );
 
 /*********************************************************
     Public Operations

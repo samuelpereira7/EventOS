@@ -515,7 +515,7 @@ void vEvent_processEvents (void)
 		{
 			if( ( pxSCB->xEventType == pxCurrentECB->xEventType ) && ( pxSCB->pdEventHandlerFunction ) )
 			{
-				pxSCB->pdEventHandlerFunction( pxSCB->xEventType, pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
+				pxSCB->pdEventHandlerFunction( pxSCB->xEventType, pcEventNameList[ pxSCB->xEventType ], pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
 			}
 			/*take the next subscriber from the sub list related to the event*/
 			listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );
