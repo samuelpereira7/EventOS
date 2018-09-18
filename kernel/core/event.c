@@ -23,6 +23,7 @@
 
 #include "EventOS.h"
 #include "event.h"
+#include "AVLTree.h"
 
 #include "Log.h"
 
@@ -233,6 +234,10 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 	listSET_LIST_NODE_VALUE( &( pxECB->xEventListNode ), ( portBASE_TYPE ) prxEvent_getProcessStamp());
 }
 
+/*
+ * 			TODO
+ * Insert a new hash algorithm
+ */
 
 __PRIVATE_ portHASH_TYPE xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght )
 {
@@ -256,6 +261,10 @@ __PRIVATE_ portHASH_TYPE xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE 
 	return xHash;
 }
 
+/*
+ * 			TODO
+ * When the AVL tree is inserted, change this function to validade.
+ */
 __PRIVATE_ portBASE_TYPE prxEvent_checkEventType( portBASE_TYPE xEventType )
 {
 	if( xEventType <= uxNumberOfEventsCreated ) return pdTRUE;

@@ -33,8 +33,8 @@ extern "C" {
  */
 
 /* Type definitions. */
-#define portCHAR		char
-#define portUCHAR		unsigned portCHAR
+#define portCHAR		signed char
+#define portUCHAR		unsigned char
 #define portINTEGER		short int
 #define portUINTEGER	unsigned portINTEGER
 #define portFLOAT		float
