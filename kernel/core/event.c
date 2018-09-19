@@ -427,32 +427,34 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 	This method searches for a an event by its name.
  	@param     pcEventName: event name
 			   uxNameLength: length of the event name
-	@return portUBASE_TYPE - identifier (type) of the new event or pdFAIL in case of failure
-	@author samuelpereira7
-	@date   07/08/2018
+	@return ttag_nodeptr - identifier (type) of the new event or NULL in case of failure
+	@author jponeticarvalho
+	@date   18/09/2018
 */
-portUBASE_TYPE uxEvent_getEventID( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
+ttag_nodeptr uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
 {
-	if( pcEventName == NULL ) return pdFAIL;
-	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
+	if( pcEventName == NULL ) return NULL;
+	if( uxNameLength > EVENT_NAME_MAX_LEN ) return NULL;
 
- 	portBASE_TYPE xIndex;
-	portUBASE_TYPE uxReturnValue = pdFAIL;
-	portHASH_TYPE xHash = 0;
+	ttag_nodeptr pxReturnValue = pdFAIL;
+	ttag_Event tagxSearched;
 
-	xHash = xEvent_calculateHash( pcEventName, uxNameLength );
+	tagxSearched.xHash = xEvent_calculateHash( pcEventName, uxNameLength );
+	strncpy( (portCHAR*) tagxSearched.pcEventName, (portCHAR*)pcEventName, uxNameLength );
 
- 	for( xIndex = EVENT_TYPE_LAST + 1; xIndex <= uxNumberOfEventsCreated; xIndex++ )
-	{
- 		if( pxHashList[ xIndex ] == xHash )
- 		{
- 			if( strncmp( pcEventNameList[ xIndex ], pcEventName, uxNameLength ) == 0 )
-			{
-				uxReturnValue = xIndex;
-				break;
-			}
- 		}
-	}
+	pxReturnValue = AVLTree_getHandler(ptagRoot, tagxSearched);
+
+// 	for( xIndex = EVENT_TYPE_LAST + 1; xIndex <= uxNumberOfEventsCreated; xIndex++ )
+//	{
+// 		if( pxHashList[ xIndex ] == xHash )
+// 		{
+// 			if( strncmp( pcEventNameList[ xIndex ], pcEventName, uxNameLength ) == 0 )
+//			{
+//				uxReturnValue = xIndex;
+//				break;
+//			}
+// 		}
+//	}
 
  	return uxReturnValue;
 }
