@@ -69,6 +69,7 @@ __PRIVATE_ xList pxEventsLists[ EVENT_PRIORITY_LAST ];	/*< Prioritized events. *
 __PRIVATE_ xList pxSubscriberLists[ EVENT_TOTAL_EVENTS ];	/*< Event handler separated by event types. */
 __PRIVATE_ portCHAR* pcEventNameList[ EVENT_TOTAL_EVENTS ];
 __PRIVATE_ portHASH_TYPE pxHashList[ EVENT_TOTAL_EVENTS ];
+__PRIVATE_ ttag_nodeptr ptagRoot;
 
 
 /*********************************************************
@@ -290,6 +291,9 @@ void vEvent_initSystem( void )
 	/* Start RTC */
 	portSTART_RTC();
 
+	/* Initalize the pointer to event tree with NULL*/
+	ptagRoot = NULL;
+
 	/* Initialize the event list before scheduler starts */
 	prvEvent_initializeEventLists();
 
@@ -330,41 +334,83 @@ void vEvent_startScheduler( void )
 	@param     pcEventName: event name
 			   uxNameLength: length of the event name
 	@return portUBASE_TYPE - identifier (type) of the new event or pdFAIL in case of failure
-	@author samuelpereira7
+	@author samuelpereira7/jponeticarvalho
 	@date   02/08/2018
 */
+//portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
+//{
+//	if( pcEventName == NULL ) return pdFAIL;
+//	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
+//	if( uxNumberOfEventsCreated > EVENT_TOTAL_EVENTS) return pdFAIL;
+//
+//	portBASE_TYPE xIndex = uxNumberOfEventsCreated + 1;
+//	portHASH_TYPE xHash = 0;
+//
+//	/* initializing the list of subscribers of the new event */
+//	vList_initialize( ( xList* ) &( pxSubscriberLists[ xIndex ] ) );
+//
+//	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength + 1 );
+//
+//	if( pcEventNameList[ xIndex ] != NULL )
+//	{
+//		/* saving the event name */
+//		strncpy( (portCHAR*) pcEventNameList[ xIndex ], pcEventName, uxNameLength + 1 );
+//
+//		xHash = xEvent_calculateHash( pcEventNameList[ xIndex ], strlen( pcEventNameList[ xIndex ] ) );
+//
+//		if( xHash != pdFAIL )
+//		{
+//			/* saving the hash of the event name */
+//			pxHashList[ xIndex ] = xHash;
+//			uxNumberOfEventsCreated++;
+//		}
+//		else
+//		{
+//			/* wild error, aborting */
+//			free( pcEventNameList[ xIndex ] );
+//			pcEventNameList[ xIndex ] = NULL;
+//
+//			return pdFAIL;
+//		}
+//	}
+//	else
+//	{
+//		return pdFAIL;
+//	}
+//
+//	return uxNumberOfEventsCreated;
+//}
 portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
 {
 	if( pcEventName == NULL ) return pdFAIL;
 	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
 	if( uxNumberOfEventsCreated > EVENT_TOTAL_EVENTS) return pdFAIL;
 
-	portBASE_TYPE xIndex = uxNumberOfEventsCreated + 1;
-	portHASH_TYPE xHash = 0;
+	ttag_Event tagEvent;
 
 	/* initializing the list of subscribers of the new event */
-	vList_initialize( ( xList* ) &( pxSubscriberLists[ xIndex ] ) );
+	vList_initialize( ( xList* ) &( tagEvent.pxSubscriberList ) );
 
-	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength + 1 );
+	tagEvent.pcEventName = (portCHAR*) pvPortMalloc( uxNameLength + 1 );
 
-	if( pcEventNameList[ xIndex ] != NULL )
+	if( tagEvent.pcEventName != NULL )
 	{
 		/* saving the event name */
-		strncpy( (portCHAR*) pcEventNameList[ xIndex ], pcEventName, uxNameLength + 1 );
+		strncpy( (portCHAR*) tagEvent.pcEventName, (portCHAR*)pcEventName, uxNameLength + 1 );
 
-		xHash = xEvent_calculateHash( pcEventNameList[ xIndex ], strlen( pcEventNameList[ xIndex ] ) );
+		tagEvent.xHash = xEvent_calculateHash( tagEvent.pcEventName, strlen((const char *)tagEvent.pcEventName) );
 
-		if( xHash != pdFAIL )
+		if( tagEvent.xHash != pdFAIL )
 		{
-			/* saving the hash of the event name */
-			pxHashList[ xIndex ] = xHash;
+			/* saving the event into avl tree */
+			ptagRoot = AVLTree_insertNode(ptagRoot, tagEvent);
 			uxNumberOfEventsCreated++;
 		}
 		else
 		{
 			/* wild error, aborting */
-			free( pcEventNameList[ xIndex ] );
-			pcEventNameList[ xIndex ] = NULL;
+			free( tagEvent.pcEventName );
+			tagEvent.pcEventName = NULL;
 
 			return pdFAIL;
 		}
@@ -376,7 +422,6 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 
 	return uxNumberOfEventsCreated;
 }
-
 
 /**
 	This method searches for a an event by its name.

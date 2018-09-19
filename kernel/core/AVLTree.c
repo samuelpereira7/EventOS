@@ -1,3 +1,10 @@
+/*
+ * avltree.c
+ *
+ *  Created on: 4 de set de 2018
+ *      Author: jpone
+ */
+
 #include "AVLTree.h"
 /*********************************************************
 
@@ -25,9 +32,9 @@
     private operations.
 
 *********************************************************/
-portCHAR			AVLTree_nodeCpm(ttag_info tagFirst, ttag_info tagSecond);
-portCHAR			AVLTree_height(ttag_nodeptr ptagRoot);
-ttag_nodeptr 	AVLTree_nodeAlloc(ttag_info tagNewInfo);
+portCHAR		AVLTree_nodeCpm(ttag_Event tagFirst, ttag_Event tagSecond);
+portCHAR		AVLTree_height(ttag_nodeptr ptagRoot);
+ttag_nodeptr 	AVLTree_nodeAlloc(ttag_Event tagNewInfo);
 ttag_nodeptr 	AVLTree_leftRotate(ttag_nodeptr ptagRoot);
 ttag_nodeptr 	AVLTree_rightRotate(ttag_nodeptr ptagRoot);
 ttag_nodeptr 	AVLTree_rightLeftRotate(ttag_nodeptr ptagRoot);
@@ -50,37 +57,42 @@ ttag_nodeptr 	AVLTree_minValueNode(ttag_nodeptr ptagRoot);
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr 	AVLTree_insertNode(ttag_nodeptr ptagRoot, ttag_info tagNewInfo){
+ttag_nodeptr 	AVLTree_insertNode(ttag_nodeptr ptagRoot, ttag_Event tagNewInfo){
 	if(ptagRoot == NULL)
 		return AVLTree_nodeAlloc(tagNewInfo);
-	
-	if(AVLTree_nodeCpm(tagNewInfo, ptagRoot->info) < 0) {
+
+	if(AVLTree_nodeCpm(tagNewInfo, ptagRoot->Event) < 0) {
 		ptagRoot->ptagLeft = AVLTree_insertNode(ptagRoot->ptagLeft, tagNewInfo);
 	}
 	else {
 		ptagRoot->ptagRight = AVLTree_insertNode(ptagRoot->ptagRight, tagNewInfo);
 	}
-	
-	portCHAR cBalanced = AVLTree_height(ptagRoot->ptagLeft) - AVLTree_height(ptagRoot->ptagRight);
-	
-	if (cBalanced > 1 && AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagLeft->info) < 0)
+
+	portCHAR cBalanced = AVLTree_height(ptagRoot->ptagLeft);
+	cBalanced -= AVLTree_height(ptagRoot->ptagRight);
+
+	portCHAR cCompareValue = AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagLeft->Event);
+	if (cBalanced > 1 && cCompareValue < 0)
         return AVLTree_rightRotate(ptagRoot);
- 
-    if (cBalanced < -1 && AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagRight->info) > 0)
+
+	cCompareValue = AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagRight->Event);
+    if (cBalanced < -1 && cCompareValue > 0)
         return AVLTree_leftRotate(ptagRoot);
- 
-    if (cBalanced > 1 && AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagLeft->info) > 0)
+
+    cCompareValue = AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagLeft->Event);
+    if (cBalanced > 1 && cCompareValue > 0)
     {
         ptagRoot->ptagLeft =  AVLTree_leftRotate(ptagRoot->ptagLeft);
         return AVLTree_rightRotate(ptagRoot);
     }
- 
-    if (cBalanced < -1 && AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagRight->info) < 0)
+
+    cCompareValue = AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagRight->Event);
+    if (cBalanced < -1 && cCompareValue < 0)
     {
         ptagRoot->ptagRight = AVLTree_rightRotate(ptagRoot->ptagRight);
         return AVLTree_leftRotate(ptagRoot);
     }
-    
+
     return ptagRoot;
 }
 
@@ -94,11 +106,11 @@ ttag_nodeptr 	AVLTree_insertNode(ttag_nodeptr ptagRoot, ttag_info tagNewInfo){
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_getHandler(ttag_nodeptr ptagRoot, ttag_info tagSearchedInfo) {
+ttag_nodeptr AVLTree_getHandler(ttag_nodeptr ptagRoot, ttag_Event tagSearchedInfo) {
 	if(ptagRoot == NULL)
 		return NULL;
 	else {
-		portCHAR cCompareValue = AVLTree_nodeCpm(ptagRoot->info, tagSearchedInfo);
+		portCHAR cCompareValue = AVLTree_nodeCpm(ptagRoot->Event, tagSearchedInfo);
 		if(cCompareValue == 0) {
 			return ptagRoot;
 		}
@@ -108,7 +120,7 @@ ttag_nodeptr AVLTree_getHandler(ttag_nodeptr ptagRoot, ttag_info tagSearchedInfo
 		else {
 			return AVLTree_getHandler(ptagRoot->ptagLeft, tagSearchedInfo);
 		}
-		
+
 	}
 }
 
@@ -122,14 +134,14 @@ ttag_nodeptr AVLTree_getHandler(ttag_nodeptr ptagRoot, ttag_info tagSearchedInfo
     @date   25/08/2018
 */
 ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptagNodeHandler) {
-	
+
 	if(ptagRoot == NULL)
 		return NULL;
-	
+
 	if(ptagRoot == ptagNodeHandler) {
 		if( (ptagRoot->ptagLeft == NULL) || (ptagRoot->ptagRight == NULL) ) {
 			ttag_nodeptr ptagTemp = ptagRoot->ptagLeft ? ptagRoot->ptagLeft:ptagRoot->ptagRight;
-		
+
 			if (ptagTemp == NULL){
 				ptagTemp = ptagRoot;
 				ptagRoot = NULL;
@@ -140,27 +152,28 @@ ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptag
 		}
 		else{
 			ttag_nodeptr ptagTemp = AVLTree_minValueNode(ptagRoot->ptagRight);
-		
-			ptagRoot->info.ucValue = ptagTemp->info.ucValue;
-		
+
+			ptagRoot->Event = ptagTemp->Event;
+
 			ptagRoot->ptagRight = AVLTree_removeSpecificNode(ptagRoot->ptagRight, ptagTemp);
 		}
 	}
 	else {
-		if(AVLTree_nodeCpm(ptagRoot->info, ptagNodeHandler->info) > 0) {
+		portCHAR cCompareValue = AVLTree_nodeCpm(ptagRoot->Event, ptagNodeHandler->Event);
+		if(cCompareValue > 0) {
 			ptagRoot->ptagLeft = AVLTree_removeSpecificNode(ptagRoot->ptagLeft, ptagNodeHandler);
 		}
 		else {
 			ptagRoot->ptagRight = AVLTree_removeSpecificNode(ptagRoot->ptagRight, ptagNodeHandler);
 		}
 	}
-	
+
 	if (ptagRoot == NULL)
 		return ptagRoot;
 
 	portCHAR cBalanced = AVLTree_height(ptagRoot->ptagLeft) - AVLTree_height(ptagRoot->ptagRight);
 	portCHAR cSubBalanced = 0;
-	
+
 	if(ptagRoot->ptagLeft == NULL)
 		cSubBalanced = 0;
 	else
@@ -168,12 +181,12 @@ ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptag
 	if(cBalanced > 1 && cSubBalanced >= 0) {
 		return AVLTree_rightRotate(ptagRoot);
 	}
-	
+
 	if(cBalanced > 1 && cSubBalanced < 0) {
 		ptagRoot->ptagLeft = AVLTree_leftRotate(ptagRoot->ptagLeft);
 		return AVLTree_rightRotate(ptagRoot);
 	}
-	
+
 	if(ptagRoot->ptagRight == NULL)
 		cSubBalanced = 0;
 	else
@@ -181,12 +194,12 @@ ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptag
     if(cBalanced < -1 && cSubBalanced <= 0) {
 		return AVLTree_leftRotate(ptagRoot);
 	}
-	
+
 	if(cBalanced < -1 && cSubBalanced > 0) {
 		ptagRoot->ptagRight = AVLTree_rightRotate(ptagRoot);
 		return AVLTree_leftRotate(ptagRoot);
 	}
-    
+
     return ptagRoot;
 }
 
@@ -199,13 +212,13 @@ ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptag
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_removeNode(ttag_nodeptr ptagRoot, ttag_info tagInfo) {
+ttag_nodeptr AVLTree_removeNode(ttag_nodeptr ptagRoot, ttag_Event tagInfo) {
 	if(ptagRoot == NULL) {
 		return ptagRoot;
 	}
-	
+
 	ttag_nodeptr ptagHandler = AVLTree_getHandler(ptagRoot, tagInfo);
-	
+
 	if(ptagHandler == NULL)
 		return NULL;
 	else
@@ -224,7 +237,8 @@ ttag_nodeptr AVLTree_clearTree(ttag_nodeptr ptagRoot) {
 	if(ptagRoot != NULL) {
 		ptagRoot->ptagRight = AVLTree_clearTree(ptagRoot->ptagRight);
 		ptagRoot->ptagLeft = AVLTree_clearTree(ptagRoot->ptagLeft);
-		free(ptagRoot);
+		vPortFree(ptagRoot->Event.pcEventName);
+		vPortFree(ptagRoot);
 	}
 	ptagRoot = NULL;
 	return ptagRoot;
@@ -256,28 +270,28 @@ void AVLTree_printTree(ttag_nodeptr ptagRoot) {
 */
 void AVLTree_printNode(ttag_nodeptr ptagRoot) {
 	if(ptagRoot != NULL) {
-		uportCHAR buffer[50];
-		sprintf(buffer,"Value: %d\nMyString: '%s'\n", ptagRoot->info.ucValue, ptagRoot->info.cMyString);
+		char buffer[50];
+		sprintf(buffer,"Value: %d\nMyString: '%s'\n", ptagRoot->Event.xHash, ptagRoot->Event.pcEventName);
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, (char*)buffer);
 	}
 }
 
 /**
-	This function compares who is larger, the first term, or the second 
+	This function compares who is larger, the first term, or the second
 
     @param	tagFirst: first term to be compared
 			tagSecond: second term to be compared
-    @return portCHAR: 	 1 to first larger then second
+    @return char: 	 1 to first larger then second
     				 0 to first equals then second
 					-1 to first smaller then second
     @author jponeticarvalho
     @date   21/08/2018
 */
-portCHAR AVLTree_nodeCpm(ttag_info tagFirst, ttag_info tagSecond) {
-	if(tagFirst.ucValue > tagSecond.ucValue) {
+portCHAR AVLTree_nodeCpm(ttag_Event tagFirst, ttag_Event tagSecond) {
+	if(tagFirst.xHash > tagSecond.xHash) {
 		return 1;
 	}
-	else if(tagFirst.ucValue < tagSecond.ucValue) {
+	else if(tagFirst.xHash < tagSecond.xHash) {
 		return -1;
 	}
 	else {
@@ -288,8 +302,8 @@ portCHAR AVLTree_nodeCpm(ttag_info tagFirst, ttag_info tagSecond) {
 /**
 	This function calculate the AVLtree Node height
 
-    @param	ptagRoot: a pointer to node to discover height 
-    @return portCHAR: height of ptagRoot
+    @param	ptagRoot: a pointer to node to discover height
+    @return char: height of ptagRoot
     @author jponeticarvalho
     @date   21/08/2018
 */
@@ -315,13 +329,13 @@ portCHAR AVLTree_height(ttag_nodeptr ptagRoot) {
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_nodeAlloc(ttag_info tagNewInfo) {
-	ttag_nodeptr ptagNewNode = (ttag_nodeptr)malloc(sizeof(ttag_node));
-	
-	ptagNewNode->info = tagNewInfo;
+ttag_nodeptr AVLTree_nodeAlloc(ttag_Event tagNewInfo) {
+	ttag_nodeptr ptagNewNode = (ttag_nodeptr)pvPortMalloc(sizeof(ttag_node));
+
+	ptagNewNode->Event = tagNewInfo;
 	ptagNewNode->ptagRight = NULL;
 	ptagNewNode->ptagLeft = NULL;
-	
+
 	return ptagNewNode;
 }
 
@@ -336,10 +350,10 @@ ttag_nodeptr AVLTree_nodeAlloc(ttag_info tagNewInfo) {
 ttag_nodeptr AVLTree_leftRotate(ttag_nodeptr ptagRoot) {
 	ttag_nodeptr ptagNewRoot = ptagRoot->ptagRight;
 	ttag_nodeptr ptagNewRightSubtree = ptagNewRoot->ptagLeft;
-	
+
 	ptagNewRoot->ptagLeft = ptagRoot;
 	ptagRoot->ptagRight = ptagNewRightSubtree;
-	
+
 	return ptagNewRoot;
 }
 
@@ -355,10 +369,10 @@ ttag_nodeptr AVLTree_leftRotate(ttag_nodeptr ptagRoot) {
 ttag_nodeptr AVLTree_rightRotate(ttag_nodeptr ptagRoot) {
 	ttag_nodeptr ptagNewRoot = ptagRoot->ptagLeft;
 	ttag_nodeptr ptagNewLeftSubtree = ptagNewRoot->ptagRight;
-	
+
 	ptagNewRoot->ptagRight = ptagRoot;
 	ptagRoot->ptagLeft = ptagNewLeftSubtree;
-	
+
 	return ptagNewRoot;
 }
 
@@ -398,10 +412,11 @@ ttag_nodeptr AVLTree_leftRightRotate(ttag_nodeptr ptagRoot) {
 */
 ttag_nodeptr AVLTree_minValueNode(ttag_nodeptr ptagRoot) {
 	ttag_nodeptr ptagMinimun = ptagRoot;
-	
+
 	while(ptagMinimun->ptagLeft != NULL) {
 		ptagMinimun = ptagMinimun->ptagLeft;
 	}
-	
+
 	return ptagMinimun;
 }
+

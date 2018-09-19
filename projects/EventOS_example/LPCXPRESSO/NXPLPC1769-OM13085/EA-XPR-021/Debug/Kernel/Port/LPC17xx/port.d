@@ -7,6 +7,9 @@ Kernel/Port/LPC17xx/port.o Kernel/Port/LPC17xx/port.d: \
  ../../../../../../kernel/core/event.h \
  ../../../../../../kernel/config/portable.h \
  ../../../../../../kernel/core/list.h \
+ ../../../../../../kernel/core/AVLTree.h \
+ ../../../../../../kernel/portable/device/NXP/LPC17xx/portmacro.h \
+ ../../../../../../middlewares/Log/Log.h \
  ../../../../../../drivers/LPC17xx_HAL_Drivers/inc/lpc17xx_rtc.h \
  ../../../../../../drivers/cmsis/device/NXP/LPC17xx/include/LPC17xx.h \
  ../../../../../../drivers/cmsis/include/core_cm3.h \
@@ -28,6 +31,12 @@ Kernel/Port/LPC17xx/port.o Kernel/Port/LPC17xx/port.d: \
 ../../../../../../kernel/config/portable.h:
 
 ../../../../../../kernel/core/list.h:
+
+../../../../../../kernel/core/AVLTree.h:
+
+../../../../../../kernel/portable/device/NXP/LPC17xx/portmacro.h:
+
+../../../../../../middlewares/Log/Log.h:
 
 ../../../../../../drivers/LPC17xx_HAL_Drivers/inc/lpc17xx_rtc.h:
 

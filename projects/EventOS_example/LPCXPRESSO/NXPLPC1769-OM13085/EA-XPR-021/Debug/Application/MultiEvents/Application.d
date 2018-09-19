@@ -4,12 +4,14 @@ Application/MultiEvents/Application.o \
  ../../../../../../kernel/core/event.h \
  ../../../../../../kernel/config/portable.h \
  ../../../../../../kernel/config/..\portable\device\NXP\LPC17xx\portmacro.h \
- ../../../../../../kernel/core/list.h ../../../../inc/Application.h \
+ ../../../../../../kernel/core/list.h \
+ ../../../../../../kernel/core/AVLTree.h \
+ ../../../../../../kernel/portable/device/NXP/LPC17xx/portmacro.h \
  ../../../../../../kernel/config/EventOS.h \
  ../../../../../../kernel/config/EventOSConfig.h \
  ../../../../../../kernel/config/portable.h \
- ../../../../../../middlewares/Log/Log.h ../../../../inc/leds.h \
- ../../../../../../drivers/bsp/EA-XPR-021/light.h \
+ ../../../../../../middlewares/Log/Log.h ../../../../inc/Application.h \
+ ../../../../inc/leds.h ../../../../../../drivers/bsp/EA-XPR-021/light.h \
  ../../../../../../drivers/LPC17xx_HAL_Drivers/inc/lpc17xx_i2c.h \
  ../../../../../../drivers/cmsis/device/NXP/LPC17xx/include/LPC17xx.h \
  ../../../../../../drivers/cmsis/include/core_cm3.h \
@@ -27,7 +29,9 @@ Application/MultiEvents/Application.o \
 
 ../../../../../../kernel/core/list.h:
 
-../../../../inc/Application.h:
+../../../../../../kernel/core/AVLTree.h:
+
+../../../../../../kernel/portable/device/NXP/LPC17xx/portmacro.h:
 
 ../../../../../../kernel/config/EventOS.h:
 
@@ -36,6 +40,8 @@ Application/MultiEvents/Application.o \
 ../../../../../../kernel/config/portable.h:
 
 ../../../../../../middlewares/Log/Log.h:
+
+../../../../inc/Application.h:
 
 ../../../../inc/leds.h:
 

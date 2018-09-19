@@ -19,42 +19,48 @@ int main()
 	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, (char*)pxEvent_getVersion());
 
 	ttag_nodeptr ptagRoot = NULL;
-	ttag_info myInfo;
+	ttag_Event myInfo;
 
-	myInfo.ucValue = 10;
-	strcpy(myInfo.cMyString,"1 insert");
+	myInfo.xHash = 10;
+	myInfo.pcEventName = (portCHAR*) pvPortMalloc( 11 )
+	strcpy(myInfo.pcEventName,"1 insert");
 	ptagRoot = AVLTree_insertNode(ptagRoot, myInfo);
 
-	myInfo.ucValue = 20;
-	strcpy(myInfo.cMyString,"2 insert");
+	myInfo.xHash = 20;
+	myInfo.pcEventName = (portCHAR*) pvPortMalloc( 11 )
+	strcpy(myInfo.pcEventName,"2 insert");
 	ptagRoot = AVLTree_insertNode(ptagRoot, myInfo);
 
-	myInfo.ucValue = 30;
-	strcpy(myInfo.cMyString,"3 insert");
+	myInfo.xHash = 30;
+	myInfo.pcEventName = (portCHAR*) pvPortMalloc( 11 )
+	strcpy(myInfo.pcEventName,"3 insert");
 	ptagRoot = AVLTree_insertNode(ptagRoot, myInfo);
 
-	myInfo.ucValue = 40;
-	strcpy(myInfo.cMyString,"4 insert");
+	myInfo.xHash = 40;
+	myInfo.pcEventName = (portCHAR*) pvPortMalloc( 11 )
+	strcpy(myInfo.pcEventName,"4 insert");
 	ptagRoot = AVLTree_insertNode(ptagRoot, myInfo);
 
-	myInfo.ucValue = 50;
-	strcpy(myInfo.cMyString,"5 insert");
+	myInfo.xHash = 50;
+	myInfo.pcEventName = (portCHAR*) pvPortMalloc( 11 )
+	strcpy(myInfo.pcEventName,"5 insert");
 	ptagRoot = AVLTree_insertNode(ptagRoot, myInfo);
 
-	myInfo.ucValue = 25;
-	strcpy(myInfo.cMyString,"6 insert");
+	myInfo.xHash = 25;
+	myInfo.pcEventName = (portCHAR*) pvPortMalloc( 11 )
+	strcpy(myInfo.pcEventName,"6 insert");
 	ptagRoot = AVLTree_insertNode(ptagRoot, myInfo);
 
 	AVLTree_printTree(ptagRoot);
 
 	printf("\nTesting Delete Method...\n\n");
 
-	myInfo.ucValue = 30;
-	strcpy(myInfo.cMyString,"3 insert");
+	myInfo.xHash = 30;
+	strcpy(myInfo.pcEventName,"3 insert");
 	ptagRoot = AVLTree_removeNode(ptagRoot, myInfo);
 
-	myInfo.ucValue = 40;
-	strcpy(myInfo.cMyString,"4 insert");
+	myInfo.xHash = 40;
+	strcpy(myInfo.pcEventName,"4 insert");
 	ptagRoot = AVLTree_removeNode(ptagRoot, myInfo);
 
 	AVLTree_printTree(ptagRoot);

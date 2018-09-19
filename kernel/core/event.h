@@ -20,6 +20,7 @@
 
 #include "portable.h"
 #include "list.h"
+#include "AVLTree.h"
 
 #ifdef __cplusplus
 extern "C" {

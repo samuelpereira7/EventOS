@@ -8,6 +8,7 @@ Kernel/Core/event.o Kernel/Core/event.d: \
  ../../../../../../kernel/config/portable.h \
  D:/JoaoDoAviao/Inatel/TCC/repositorio/EventOS/kernel/core/list.h \
  D:/JoaoDoAviao/Inatel/TCC/repositorio/EventOS/kernel/core/AVLTree.h \
+ ../../../../../../kernel/portable/device/NXP/LPC17xx/portmacro.h \
  ../../../../../../middlewares/Log/Log.h
 
 ../../../../../../kernel/config/EventOS.h:
@@ -25,5 +26,7 @@ D:/JoaoDoAviao/Inatel/TCC/repositorio/EventOS/kernel/core/event.h:
 D:/JoaoDoAviao/Inatel/TCC/repositorio/EventOS/kernel/core/list.h:
 
 D:/JoaoDoAviao/Inatel/TCC/repositorio/EventOS/kernel/core/AVLTree.h:
+
+../../../../../../kernel/portable/device/NXP/LPC17xx/portmacro.h:
 
 ../../../../../../middlewares/Log/Log.h:

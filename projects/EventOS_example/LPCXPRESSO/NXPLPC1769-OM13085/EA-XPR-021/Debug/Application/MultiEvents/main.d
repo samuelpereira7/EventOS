@@ -7,8 +7,10 @@ Application/MultiEvents/main.o Application/MultiEvents/main.d: \
  ../../../../../../kernel/core/event.h \
  ../../../../../../kernel/config/portable.h \
  ../../../../../../kernel/core/list.h \
- ../../../../../../kernel/core/AVLTree.h ../../../../inc/Application.h \
- ../../../../../../middlewares/Log/Log.h
+ ../../../../../../kernel/core/AVLTree.h \
+ ../../../../../../kernel/portable/device/NXP/LPC17xx/portmacro.h \
+ ../../../../../../middlewares/Log/Log.h \
+ ../../../../../../kernel/core/AVLTree.h ../../../../inc/Application.h
 
 ../../../../../../kernel/config/EventOS.h:
 
@@ -26,6 +28,10 @@ Application/MultiEvents/main.o Application/MultiEvents/main.d: \
 
 ../../../../../../kernel/core/AVLTree.h:
 
-../../../../inc/Application.h:
+../../../../../../kernel/portable/device/NXP/LPC17xx/portmacro.h:
 
 ../../../../../../middlewares/Log/Log.h:
+
+../../../../../../kernel/core/AVLTree.h:
+
+../../../../inc/Application.h:

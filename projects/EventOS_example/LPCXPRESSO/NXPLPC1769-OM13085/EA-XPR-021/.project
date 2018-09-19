@@ -80,6 +80,11 @@
 			<locationURI>PARENT-5-PROJECT_LOC/drivers/LPC17xx_HAL_Drivers/src/lpc17xx_uart.c</locationURI>
 		</link>
 		<link>
+			<name>Kernel/Core/AVLTree.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/kernel/core/AVLTree.c</locationURI>
+		</link>
+		<link>
 			<name>Kernel/Core/event.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/kernel/core/event.c</locationURI>
