@@ -58,7 +58,7 @@ typedef struct evtEventControlBlock
 typedef struct evtSubscriber
 {
 	void* pvHandler;
-	portBASE_TYPE			xEventType;
+	ttag_nodeptr			pxEventType;
 	pdEVENT_HANDLER_FUNCTION pdEventHandlerFunction;
 
 	xListNode				xSubscriberListNode;					/*< List node used to place the event in the list. */
@@ -94,7 +94,7 @@ __PRIVATE_ volatile portUBASE_TYPE uxNumberOfEventsCreated =		( portUBASE_TYPE )
  * Place the subscriber represented by pxSCB into the appropriate event queue for.
  * It is inserted at the head of the list.
  */
-#define prvEvent_addSubscriberToList( pxSCB ) vList_insertHead( ( xList* ) &( pxSubscriberLists[ pxSCB->xEventType ] ), &( pxSCB->xSubscriberListNode ) );	\
+#define prvEvent_addSubscriberToList( pxSCB ) vList_insertHead( ( xList* ) &( pxSCB->pxEventType->Event.pxSubscriberList ), &( pxSCB->xSubscriberListNode ) );	\
 
 /*
  * Place the event represented by pxECB into the appropriate event priority queue.
@@ -147,17 +147,15 @@ __PRIVATE_ void prvEvent_initializeEventLists( void )
 	}
 }
 
-__PRIVATE_ void prvEvent_initializeSubscriberLists( void )
+__PRIVATE_ void prvEvent_initializeSubscriberLists( ttag_nodeptr pxRoot )
 {
-	portUBASE_TYPE uxEventType;
-
 	/* The initialization of this list should be done just for default events (see enum "tenuEventType" in "portmacro.h" file).
 	 * This operation is performed automatically for events created at run-time (see function "uxEvent_createEvent").
 	 */
-	for( uxEventType = 0; uxEventType < EVENT_TYPE_LAST; uxEventType++ )
-	{
-		vList_initialize( ( xList* ) &( pxSubscriberLists[ uxEventType ] ) );
-	}
+	vList_initialize( ( xList* ) &( pxRoot->Event.pxSubscriberList ) );
+	prvEvent_initializeSubscriberLists(pxRoot->ptagLeft);
+	prvEvent_initializeSubscriberLists(pxRoot->ptagRight);
+
 }
 
 __PRIVATE_ void prvEvent_initializeEventNameList( void )
@@ -182,16 +180,14 @@ __PRIVATE_ void prvEvent_initializeHashList( void )
 	}
 }
 
-__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE xEventType, void* pvSubscriber )
+__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, ttag_nodeptr pxEventType, void* pvSubscriber )
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( xEventType > uxNumberOfEventsCreated )
-	{
-		xEventType = EVENT_TYPE_UNKNOWN;
-	}
+	if( pxEventType == NULL )
+		return;
 
-	pxSCB->xEventType = xEventType;
+	pxSCB->pxEventType = pxEventType;
 	pxSCB->pdEventHandlerFunction = pFunction;
 	pxSCB->pvHandler = pvSubscriber;
 
@@ -335,51 +331,8 @@ void vEvent_startScheduler( void )
 			   uxNameLength: length of the event name
 	@return portUBASE_TYPE - identifier (type) of the new event or pdFAIL in case of failure
 	@author samuelpereira7/jponeticarvalho
-	@date   02/08/2018
+	@date   18/09/2018
 */
-//portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
-//{
-//	if( pcEventName == NULL ) return pdFAIL;
-//	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
-//	if( uxNumberOfEventsCreated > EVENT_TOTAL_EVENTS) return pdFAIL;
-//
-//	portBASE_TYPE xIndex = uxNumberOfEventsCreated + 1;
-//	portHASH_TYPE xHash = 0;
-//
-//	/* initializing the list of subscribers of the new event */
-//	vList_initialize( ( xList* ) &( pxSubscriberLists[ xIndex ] ) );
-//
-//	pcEventNameList[ xIndex ] = (portCHAR*) pvPortMalloc( uxNameLength + 1 );
-//
-//	if( pcEventNameList[ xIndex ] != NULL )
-//	{
-//		/* saving the event name */
-//		strncpy( (portCHAR*) pcEventNameList[ xIndex ], pcEventName, uxNameLength + 1 );
-//
-//		xHash = xEvent_calculateHash( pcEventNameList[ xIndex ], strlen( pcEventNameList[ xIndex ] ) );
-//
-//		if( xHash != pdFAIL )
-//		{
-//			/* saving the hash of the event name */
-//			pxHashList[ xIndex ] = xHash;
-//			uxNumberOfEventsCreated++;
-//		}
-//		else
-//		{
-//			/* wild error, aborting */
-//			free( pcEventNameList[ xIndex ] );
-//			pcEventNameList[ xIndex ] = NULL;
-//
-//			return pdFAIL;
-//		}
-//	}
-//	else
-//	{
-//		return pdFAIL;
-//	}
-//
-//	return uxNumberOfEventsCreated;
-//}
 portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
 {
 	if( pcEventName == NULL ) return pdFAIL;
@@ -444,18 +397,6 @@ ttag_nodeptr uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNa
 
 	pxReturnValue = AVLTree_getHandler(ptagRoot, tagxSearched);
 
-// 	for( xIndex = EVENT_TYPE_LAST + 1; xIndex <= uxNumberOfEventsCreated; xIndex++ )
-//	{
-// 		if( pxHashList[ xIndex ] == xHash )
-// 		{
-// 			if( strncmp( pcEventNameList[ xIndex ], pcEventName, uxNameLength ) == 0 )
-//			{
-//				uxReturnValue = xIndex;
-//				break;
-//			}
-// 		}
-//	}
-
  	return uxReturnValue;
 }
 
@@ -470,9 +411,9 @@ ttag_nodeptr uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNa
     @author Edielson
     @date   15/09/2017
 */
-signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, portUBASE_TYPE uxEventType, void* pvSubscriber )
+signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, ttag_nodeptr pxEventType, void* pvSubscriber )
 {
-	if( uxEventType > ( portBASE_TYPE ) uxNumberOfEventsCreated ) return pdFALSE;
+	if( pxEventType > ( portBASE_TYPE ) uxNumberOfEventsCreated ) return pdFALSE;
 	if( !pvFunction ) return pdFALSE;
 
 	signed portBASE_TYPE xReturn = pdFALSE;
@@ -481,7 +422,7 @@ signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, port
 	if(pxNewSubscriber)
 	{
 		/*Initializing variables*/
-		prvEvent_initializeSCBVariables( pxNewSubscriber, pvFunction, uxEventType, pvSubscriber );
+		prvEvent_initializeSCBVariables( pxNewSubscriber, pvFunction, pxEventType, pvSubscriber );
 
 		portDISABLE_INTERRUPTS();
 		{
