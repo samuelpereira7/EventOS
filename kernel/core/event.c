@@ -43,7 +43,7 @@ typedef struct evtEventControlBlock
 {
 	xListNode				xEventListNode;							/*< List node used to place the event in the list. */
 	portBASE_TYPE			xEventPriority;							/*< The priority of the event where 0 is the lowest priority. */
-	portBASE_TYPE			xEventType;
+	ttag_nodeptr			pxEventType;
 	signed char				pcEventName[configMAX_EVENT_NAME_LEN];	/*< Descriptive name given to the event when created.  Facilitates debugging only. */
 
 	xList*					pxSubscriberList;						/*< Pointer to the list of event handlers >*/
@@ -198,14 +198,12 @@ __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_
 	listSET_LIST_NODE_OWNER((xListNode*) &( pxSCB->xSubscriberListNode ), pxSCB );
 }
 
-__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority )
+__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, ttag_nodeptr pxEventType, portUBASE_TYPE uxEventPriority )
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( uxEventType > uxNumberOfEventsCreated )
-	{
-		uxEventType = EVENT_TYPE_UNKNOWN;
-	}
+	if( pxEventType == NULL )
+		return;
 
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
@@ -214,13 +212,13 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 		uxEventType = EVENT_PRIORITY_LAST - 1;
 	}
 
-	pxECB->xEventType = uxEventType;
+	pxECB->pxEventType = pxEventType;
 	pxECB->xEventPriority = uxEventPriority;
 	pxECB->pvPayload = NULL;
 	pxECB->xPayloadSize = 0;
 
 	/*Easier to access and run over the subscribers list*/
-	pxECB->pxSubscriberList = (& pxSubscriberLists[ uxEventType ]);
+	pxECB->pxSubscriberList = (& pxEventType->Event.pxSubscriberList);
 
 	vList_initializeNode( &( pxECB->xEventListNode ) );
 
@@ -453,9 +451,9 @@ signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, ttag
     @date   22/09/2014
 */
 
-signed portBASE_TYPE xEvent_publish( portUBASE_TYPE uxEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize )
+signed portBASE_TYPE xEvent_publish( ttag_nodeptr pxEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize )
 {
-	if( uxEventType > uxNumberOfEventsCreated ) return pdFALSE;
+	if( pxEventType > uxNumberOfEventsCreated ) return pdFALSE;
 	if( uxPriority >= EVENT_PRIORITY_LAST ) return pdFALSE;
 
 	portBASE_TYPE xStatus = pdFALSE;
@@ -463,7 +461,7 @@ signed portBASE_TYPE xEvent_publish( portUBASE_TYPE uxEventType, portUBASE_TYPE 
 	evtECB* pxNewEvent = (evtECB*)pvPortMalloc(sizeof(evtECB));
 	if(pxNewEvent)
 	{
-		prvEvent_initializeECBVariables( pxNewEvent, uxEventType, uxPriority );
+		prvEvent_initializeECBVariables( pxNewEvent, pxEventType, uxPriority );
 
 		if( pvPayload != NULL )
 		{
