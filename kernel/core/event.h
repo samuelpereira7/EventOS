@@ -98,9 +98,9 @@ typedef void ( *pdEVENT_HANDLER_FUNCTION )( portBASE_TYPE, char*, void*, void*, 
 void					vEvent_initSystem( void );
 void 					vEvent_startScheduler( void );
 portUBASE_TYPE			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
-portUBASE_TYPE			uxEvent_getEventID( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
-signed portBASE_TYPE 	xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pFunction, portUBASE_TYPE uxEventType, void* pvSubscriber );
-signed portBASE_TYPE	xEvent_publish( portUBASE_TYPE uxEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize );
+ttag_nodeptr			uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
+signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, ttag_nodeptr pxEventType, void* pvSubscriber );
+signed portBASE_TYPE xEvent_publish( ttag_nodeptr pxEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize );
 portCHAR*  				pxEvent_getVersion( void );
 
 /*-----------------------------------------------------------

@@ -110,13 +110,13 @@ __PRIVATE_ volatile portUBASE_TYPE uxNumberOfEventsCreated =		( portUBASE_TYPE )
 
 
 __PRIVATE_ void prvEvent_initializeEventLists( void );
-__PRIVATE_ void prvEvent_initializeSubscriberLists( void );
+__PRIVATE_ void prvEvent_initializeSubscriberLists( ttag_nodeptr pxRoot );
 __PRIVATE_ void prvEvent_initializeEventNameList( void );
 __PRIVATE_ void prvEvent_initializeHashList( void );
-__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber );
-__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority );
+__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, ttag_nodeptr pxEventType, void* pvSubscriber );
+__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, ttag_nodeptr pxEventType, portUBASE_TYPE uxEventPriority );
 __PRIVATE_ portHASH_TYPE xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght );
-__PRIVATE_ portBASE_TYPE prxEvent_checkEventType( portBASE_TYPE xEventType );
+__PRIVATE_ portBASE_TYPE prxEvent_checkEventType( ttag_nodeptr xEventType );
 __PRIVATE_ void prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portUBASE_TYPE prxEvent_getProcessStamp( void );
 __PRIVATE_ void prvEvent_updateLifeTime( void );
@@ -152,6 +152,7 @@ __PRIVATE_ void prvEvent_initializeSubscriberLists( ttag_nodeptr pxRoot )
 	/* The initialization of this list should be done just for default events (see enum "tenuEventType" in "portmacro.h" file).
 	 * This operation is performed automatically for events created at run-time (see function "uxEvent_createEvent").
 	 */
+	if(pxRoot == NULL) return;
 	vList_initialize( ( xList* ) &( pxRoot->Event.pxSubscriberList ) );
 	prvEvent_initializeSubscriberLists(pxRoot->ptagLeft);
 	prvEvent_initializeSubscriberLists(pxRoot->ptagRight);
@@ -209,7 +210,7 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, ttag_nodeptr pxE
 	remove the privilege bit if one is present. */
 	if( uxEventPriority >= EVENT_PRIORITY_LAST )
 	{
-		uxEventType = EVENT_PRIORITY_LAST - 1;
+		uxEventPriority = EVENT_PRIORITY_LAST - 1;
 	}
 
 	pxECB->pxEventType = pxEventType;
@@ -260,10 +261,10 @@ __PRIVATE_ portHASH_TYPE xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE 
  * 			TODO
  * When the AVL tree is inserted, change this function to validade.
  */
-__PRIVATE_ portBASE_TYPE prxEvent_checkEventType( portBASE_TYPE xEventType )
+__PRIVATE_ portBASE_TYPE prxEvent_checkEventType( ttag_nodeptr pxEventType )
 {
-	if( xEventType <= uxNumberOfEventsCreated ) return pdTRUE;
-	else return pdFALSE;
+	if(AVLTree_getHandler(ptagRoot, pxEventType->Event) == pxEventType) return pdTRUE;
+	else return pdFAIL;
 }
 
 __PRIVATE_ void prvEvent_incrementProcessStamp( void )
@@ -395,7 +396,7 @@ ttag_nodeptr uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNa
 
 	pxReturnValue = AVLTree_getHandler(ptagRoot, tagxSearched);
 
- 	return uxReturnValue;
+ 	return pxReturnValue;
 }
 
 
@@ -411,7 +412,7 @@ ttag_nodeptr uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNa
 */
 signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, ttag_nodeptr pxEventType, void* pvSubscriber )
 {
-	if( pxEventType > ( portBASE_TYPE ) uxNumberOfEventsCreated ) return pdFALSE;
+	if( pxEventType == NULL ) return pdFALSE;
 	if( !pvFunction ) return pdFALSE;
 
 	signed portBASE_TYPE xReturn = pdFALSE;
@@ -431,7 +432,7 @@ signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, ttag
 			{
 				/* This is the first subscriber to be created so do the preliminary
 				required initialization. */
-				prvEvent_initializeSubscriberLists();
+				prvEvent_initializeSubscriberLists(ptagRoot);
 			}
 			prvEvent_addSubscriberToList( pxNewSubscriber );
 
@@ -453,7 +454,7 @@ signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, ttag
 
 signed portBASE_TYPE xEvent_publish( ttag_nodeptr pxEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize )
 {
-	if( pxEventType > uxNumberOfEventsCreated ) return pdFALSE;
+	if( pxEventType == NULL ) return pdFALSE;
 	if( uxPriority >= EVENT_PRIORITY_LAST ) return pdFALSE;
 
 	portBASE_TYPE xStatus = pdFALSE;
@@ -508,9 +509,9 @@ void vEvent_processEvents (void)
 		listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );
 		while(pxSCB)
 		{
-			if( ( pxSCB->xEventType == pxCurrentECB->xEventType ) && ( pxSCB->pdEventHandlerFunction ) )
+			if( ( pxSCB->pxEventType == pxCurrentECB->pxEventType ) && ( pxSCB->pdEventHandlerFunction ) )
 			{
-				pxSCB->pdEventHandlerFunction( pxSCB->xEventType, pcEventNameList[ pxSCB->xEventType ], pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
+				pxSCB->pdEventHandlerFunction( pxSCB->pxEventType, (char*)pxSCB->pxEventType->Event.pcEventName, pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
 			}
 			/*take the next subscriber from the sub list related to the event*/
 			listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );

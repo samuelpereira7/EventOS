@@ -28,12 +28,16 @@ void Application_receiveLight( portBASE_TYPE EventType, char* EventName, void* p
 void Application_createdEventCallback( portBASE_TYPE EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
 volatile portULONG msTicks; // counter for 1ms Applications
+ttag_nodeptr event1;
+ttag_nodeptr event2;
+ttag_nodeptr event3;
+ttag_nodeptr event4;
 
 void SysTick_Handler(void)
 {
 	msTicks++;
 
-	long id;
+	ttag_nodeptr eventHandler;
 	portULONG xVar = msTicks;
 
 	//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"Handling new Application interrupt\n");
@@ -42,23 +46,23 @@ void SysTick_Handler(void)
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: TICK");
 		//xEvent_publish(EVENT_SYS_TICK, EVENT_PRIORITY_LOW, NULL, 0);
-		id = uxEvent_getEventID( "myevent3", strlen( "myevent3" ) );
-		xEvent_publish( id, EVENT_PRIORITY_HIGH, &xVar, sizeof( xVar ) );
+		eventHandler = uxEvent_getEventHandler( "myevent3", strlen( "myevent3" ) );
+		xEvent_publish( eventHandler, EVENT_PRIORITY_HIGH, &xVar, sizeof( xVar ) );
 		//xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_SYS_UART, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_SYS_USB, EVENT_PRIORITY_MEDIUM, NULL, 0);
 		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
 	}
-	if( msTicks % 5000 == 0 )
-	{
-		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: ETHERNET");
-		xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
-	}
+//	if( msTicks % 5000 == 0 )
+//	{
+//		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: ETHERNET");
+//		xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
+//	}
 	if( msTicks % 10000 == 0 )
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: Application");
-		xEvent_publish(EVENT_SYS_SYSTICK, EVENT_PRIORITY_HIGH, NULL, 0);
+		xEvent_publish(event1, EVENT_PRIORITY_HIGH, NULL, 0);
 
 	    msTicks = 0;
 	}
@@ -88,34 +92,33 @@ void Application_initI2C(void)
 
 void Application_new( void )
 {
-	char* evt1 = "myevent1";
-	char* evt2 = "myevent2";
+	char* evt1 = "myevent1"; //systick
+	char* evt2 = "myevent2"; //tick
 	char* evt3 = "myevent3";
 	char* evt4 = "myevent4";
-	long id_in;
-	long id_out;
+	ttag_nodeptr id_out;
 
 	Application_initI2C();
 
 	led2_init();
 	light_enable();
 
-	id_in = uxEvent_createEvent( evt1, strlen( evt1 ) );
-	id_in = uxEvent_createEvent( evt2, strlen( evt2 ) );
-	id_in = uxEvent_createEvent( evt3, strlen( evt3 ) );
-	id_in = uxEvent_createEvent( evt4, strlen( evt4 ) );
+	event1 = uxEvent_createEvent( evt1, strlen( evt1 ) );
+	event2 = uxEvent_createEvent( evt2, strlen( evt2 ) );
+	event3 = uxEvent_createEvent( evt3, strlen( evt3 ) );
+	event4 = uxEvent_createEvent( evt4, strlen( evt4 ) );
 
-	id_out = uxEvent_getEventID( evt3, strlen( evt1 ) );
+	id_out = uxEvent_getEventHandler( evt3, strlen( evt3 ) );
 
 	if( id_out != pdFAIL )
 	{
 		xEvent_subscribe( Application_createdEventCallback, id_out, NULL );
 	}
 
-	xEvent_subscribe( Application_receiveNewEvent, EVENT_SYS_TICK, NULL );
-	xEvent_subscribe( Application_receiveNewEvent, EVENT_SYS_SYSTICK, NULL );
-	xEvent_subscribe( Application_receiveNewEvent, EVENT_SYS_ETHERNET, NULL );
-	xEvent_subscribe( Application_receiveLight, EVENT_APP_LIGHT, NULL );
+	xEvent_subscribe( Application_receiveNewEvent, event1, NULL );
+	xEvent_subscribe( Application_receiveNewEvent, event2, NULL );
+	xEvent_subscribe( Application_receiveNewEvent, event3, NULL );
+	xEvent_subscribe( Application_receiveLight, event4, NULL );
 
 	led2_on();
 
@@ -154,7 +157,7 @@ void Application_receiveNewEvent(portBASE_TYPE EventType, char* EventName, void*
 		case EVENT_SYS_SYSTICK:
 			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Systick)");
 			xLight = light_read();
-			xEvent_publish( EVENT_APP_LIGHT, EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
+			xEvent_publish( event4, EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
 		    led2_invert();
 			break;
 		case EVENT_SYS_TICK:
