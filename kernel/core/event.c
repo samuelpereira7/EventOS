@@ -364,15 +364,15 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 			free( tagEvent.pcEventName );
 			tagEvent.pcEventName = NULL;
 
-			return pdFAIL;
+			return NULL;
 		}
 	}
 	else
 	{
-		return pdFAIL;
+		return NULL;
 	}
 
-	return uxNumberOfEventsCreated;
+	return AVLTree_getHandler(ptagRoot, tagEvent);
 }
 
 /**
