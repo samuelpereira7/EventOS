@@ -332,7 +332,7 @@ void vEvent_startScheduler( void )
 	@author samuelpereira7/jponeticarvalho
 	@date   18/09/2018
 */
-portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
+ttag_nodeptr uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
 {
 	if( pcEventName == NULL ) return pdFAIL;
 	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
@@ -373,6 +373,24 @@ portUBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxName
 	}
 
 	return AVLTree_getHandler(ptagRoot, tagEvent);
+}
+
+/**
+	This method creates new events. Such events can be used later on.
+
+	@param     pcEventName: event name
+			   uxNameLength: length of the event name
+	@return portUBASE_TYPE - identifier (type) of the new event or pdFAIL in case of failure
+	@author samuelpereira7/jponeticarvalho
+	@date   18/09/2018
+*/
+ttag_nodeptr uxEvent_deleteEvent( ttag_nodeptr ptagNodeHandler )
+{
+	if( ptagNodeHandler == NULL ) return pdFAIL;
+
+	if( AVLTree_removeSpecificNode(ptagRoot, ptagNodeHandler) == NULL ) return pdTRUE;
+	else return pdFAIL;
+
 }
 
 /**
@@ -511,7 +529,7 @@ void vEvent_processEvents (void)
 		{
 			if( ( pxSCB->pxEventType == pxCurrentECB->pxEventType ) && ( pxSCB->pdEventHandlerFunction ) )
 			{
-				pxSCB->pdEventHandlerFunction( pxSCB->pxEventType, (char*)pxSCB->pxEventType->Event.pcEventName, pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
+				pxSCB->pdEventHandlerFunction( (void*)pxSCB->pxEventType, (char*)pxSCB->pxEventType->Event.pcEventName, pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
 			}
 			/*take the next subscriber from the sub list related to the event*/
 			listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );

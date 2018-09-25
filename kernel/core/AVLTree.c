@@ -35,6 +35,7 @@
 portCHAR		AVLTree_nodeCpm(ttag_Event tagFirst, ttag_Event tagSecond);
 portCHAR		AVLTree_height(ttag_nodeptr ptagRoot);
 ttag_nodeptr 	AVLTree_nodeAlloc(ttag_Event tagNewInfo);
+ttag_nodeptr 	AVLTree_nodeDealloc(ttag_nodeptr ptagNode);
 ttag_nodeptr 	AVLTree_leftRotate(ttag_nodeptr ptagRoot);
 ttag_nodeptr 	AVLTree_rightRotate(ttag_nodeptr ptagRoot);
 ttag_nodeptr 	AVLTree_rightLeftRotate(ttag_nodeptr ptagRoot);
@@ -148,7 +149,7 @@ ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptag
 			}
 			else
 				*ptagRoot = *ptagTemp;
-			free(ptagTemp);
+			AVLTree_nodeDealloc(ptagTemp);
 		}
 		else{
 			ttag_nodeptr ptagTemp = AVLTree_minValueNode(ptagRoot->ptagRight);
@@ -237,8 +238,7 @@ ttag_nodeptr AVLTree_clearTree(ttag_nodeptr ptagRoot) {
 	if(ptagRoot != NULL) {
 		ptagRoot->ptagRight = AVLTree_clearTree(ptagRoot->ptagRight);
 		ptagRoot->ptagLeft = AVLTree_clearTree(ptagRoot->ptagLeft);
-		vPortFree(ptagRoot->Event.pcEventName);
-		vPortFree(ptagRoot);
+		AVLTree_nodeDealloc(ptagRoot);
 	}
 	ptagRoot = NULL;
 	return ptagRoot;
@@ -337,6 +337,30 @@ ttag_nodeptr AVLTree_nodeAlloc(ttag_Event tagNewInfo) {
 	ptagNewNode->ptagLeft = NULL;
 
 	return ptagNewNode;
+}
+
+/**
+	Its a helper function that deallocates a node.
+
+    @param	ptagNode: node to be deallocated
+    @return ttag_nodeptr: a pointer to node deallocated
+    			NULL - deallocated suceffuly
+    @author jponeticarvalho
+    @date   21/08/2018
+*/
+ttag_nodeptr AVLTree_nodeDealloc(ttag_nodeptr ptagNode) {
+
+	if(ptagNode == NULL) return NULL;
+
+	vPortFree(ptagNode->Event.pcEventName);
+	ptagNode->Event.pcEventName = NULL;
+
+
+
+	vPortFree(ptagNode);
+	ptagNode = NULL;
+
+	return ptagNode;
 }
 
 /**
