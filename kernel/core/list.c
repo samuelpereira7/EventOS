@@ -24,9 +24,9 @@
     Operations implementation
 *********************************************************/
 
-void vList_initialize(xList* pxList)
+void vList_initialize( xList* pxList )
 {
-	if(pxList == NULL) return;
+	if( pxList == NULL ) return;
 
 	/* The list structure contains an item which is used to mark the
 	end of the list - the sentinel.  To initialize the list, the list end
@@ -43,6 +43,16 @@ void vList_initialize(xList* pxList)
 	pxList->xListSentinel.pxPrevious = ( xListNode * ) &( pxList->xListSentinel );
 
 	pxList->uxNumberOfNodes = 0;
+}
+
+void vList_deinitialize( xList* pxList )
+{
+	if( pxList == NULL ) return;
+
+	while( pxList->uxNumberOfNodes > 0 )
+	{
+		vList_remove( pxList->xListSentinel.pxNext );
+	}
 }
 
 void vList_initializeNode( xListNode* pxNode )
@@ -62,12 +72,12 @@ void vList_insertHead( xList* pxList, xListNode* pxNewListNode )
 	pxIndex = pxList->pxIndex;
 
 	pxNewListNode->pxNext = pxIndex->pxNext;
-	pxIndex->pxNext->pxPrevious = ( volatile xListNode*) pxNewListNode;
+	pxIndex->pxNext->pxPrevious = ( volatile xListNode* ) pxNewListNode;
 	pxIndex->pxNext = ( volatile xListNode* ) pxNewListNode;
 	pxNewListNode->pxPrevious = pxList->pxIndex;
 
 	/* Remember which list the node is in. */
-	pxNewListNode->pvContainer = ( void * ) pxList;
+	pxNewListNode->pvContainer = ( void* ) pxList;
 
 	( pxList->uxNumberOfNodes )++;
 }
