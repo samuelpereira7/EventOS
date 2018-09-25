@@ -53,6 +53,8 @@ void vList_deinitialize( xList* pxList )
 	{
 		vList_remove( pxList->xListSentinel.pxNext );
 	}
+
+	pxList = NULL;
 }
 
 void vList_initializeNode( xListNode* pxNode )

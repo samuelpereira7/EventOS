@@ -23,41 +23,37 @@
     public constants.
 
 *********************************************************/
+#define WEAK __attribute__ ((weak))
 
+#define BIGGER	1
+#define SMALLER -1
+#define EQUALS	0
 
 /*********************************************************
 
     public types.
 
 *********************************************************/
-typedef struct tag_Event {
-
-	xList pxSubscriberList;	/*< Event handler separated by event types. */
-	portCHAR *pcEventName;
-	portHASH_TYPE xHash;
-
-}ttag_Event;
-
-typedef struct tag_node
+typedef struct tag_treeNode
 {
-	ttag_Event Event;
-	struct tag_node *ptagRight;
-	struct tag_node *ptagLeft;
-}ttag_node;
+	void* pvPayload;
+	struct tag_treeNode *ptagRight;
+	struct tag_treeNode *ptagLeft;
+}ttag_treeNode;
 
-typedef ttag_node* ttag_nodeptr;
+typedef ttag_treeNode* ttag_treeNodePtr;
 
 /*********************************************************
 
     public operations.
 
 *********************************************************/
-ttag_nodeptr 	AVLTree_insertNode(ttag_nodeptr ptagRoot, ttag_Event tagNewInfo);
-ttag_nodeptr 	AVLTree_getHandler(ttag_nodeptr ptagRoot, ttag_Event tagSearchedInfo);
-ttag_nodeptr 	AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptagNodeHandler);
-ttag_nodeptr 	AVLTree_removeNode(ttag_nodeptr ptagRoot, ttag_Event tagInfo);
-ttag_nodeptr	AVLTree_clearTree(ttag_nodeptr ptagRoot);
-void			AVLTree_printTree(ttag_nodeptr ptagRoot);
-void			AVLTree_printNode(ttag_nodeptr ptagRoot);
+ttag_treeNodePtr	AVLTree_insertNode(ttag_treeNodePtr ptagRoot, void* pvPayload, ttag_treeNodePtr* pptagNodeHandler);
+ttag_treeNodePtr 	AVLTree_getHandler(ttag_treeNodePtr ptagRoot, void* pvPayloadSearched);
+ttag_treeNodePtr 	AVLTree_removeSpecificNode(ttag_treeNodePtr ptagRoot, ttag_treeNodePtr ptagNodeHandler);
+ttag_treeNodePtr 	AVLTree_removeNode(ttag_treeNodePtr ptagRoot, void* pvPayload);
+ttag_treeNodePtr	AVLTree_clearTree(ttag_treeNodePtr ptagRoot);
+void				AVLTree_printTree(ttag_treeNodePtr ptagRoot);
+WEAK void			AVLTree_printNode(ttag_treeNodePtr ptagRoot);
 
 #endif /* KERNEL_CORE_AVLTREE_H_ */

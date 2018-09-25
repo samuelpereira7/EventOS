@@ -32,15 +32,15 @@
     private operations.
 
 *********************************************************/
-portCHAR		AVLTree_nodeCpm(ttag_Event tagFirst, ttag_Event tagSecond);
-portCHAR		AVLTree_height(ttag_nodeptr ptagRoot);
-ttag_nodeptr 	AVLTree_nodeAlloc(ttag_Event tagNewInfo);
-ttag_nodeptr 	AVLTree_nodeDealloc(ttag_nodeptr ptagNode);
-ttag_nodeptr 	AVLTree_leftRotate(ttag_nodeptr ptagRoot);
-ttag_nodeptr 	AVLTree_rightRotate(ttag_nodeptr ptagRoot);
-ttag_nodeptr 	AVLTree_rightLeftRotate(ttag_nodeptr ptagRoot);
-ttag_nodeptr 	AVLTree_leftRightRotate(ttag_nodeptr ptagRoot);
-ttag_nodeptr 	AVLTree_minValueNode(ttag_nodeptr ptagRoot);
+WEAK portCHAR 		AVLTree_nodeCmp(void* pvFirst, void* pvSecond);
+portCHAR			AVLTree_height(ttag_treeNodePtr ptagRoot);
+ttag_treeNodePtr	AVLTree_nodeAlloc(void* pvPayload, ttag_treeNodePtr* pptagNodeHandler);
+ttag_treeNodePtr	AVLTree_nodeDealloc(ttag_treeNodePtr ptagNode);
+ttag_treeNodePtr 	AVLTree_leftRotate(ttag_treeNodePtr ptagRoot);
+ttag_treeNodePtr 	AVLTree_rightRotate(ttag_treeNodePtr ptagRoot);
+ttag_treeNodePtr 	AVLTree_rightLeftRotate(ttag_treeNodePtr ptagRoot);
+ttag_treeNodePtr 	AVLTree_leftRightRotate(ttag_treeNodePtr ptagRoot);
+ttag_treeNodePtr 	AVLTree_minValueNode(ttag_treeNodePtr ptagRoot);
 
 
 /*********************************************************
@@ -52,43 +52,44 @@ ttag_nodeptr 	AVLTree_minValueNode(ttag_nodeptr ptagRoot);
 /**
 	This function insert the tagNewInfo to ptagRoot AVLTree
 
-    @param	ptagRoot: a pointer to root os AVLTree
-    		tagNewInfo: information to be inserted in AVLTree
-    @return ttag_nodeptr: pointer to root after insert information.
+    @param	ptagRoot: a pointer to root of AVLTree
+    		pvPayload: information to be inserted in AVLTree
+    		pptagNodeHandler: a handler to be setted a node allocated
+    @return ttag_treeNode: pointer to root after insert information.
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr 	AVLTree_insertNode(ttag_nodeptr ptagRoot, ttag_Event tagNewInfo){
+ttag_treeNodePtr AVLTree_insertNode(ttag_treeNodePtr ptagRoot, void* pvPayload, ttag_treeNodePtr* pptagNodeHandler){
 	if(ptagRoot == NULL)
-		return AVLTree_nodeAlloc(tagNewInfo);
+		return AVLTree_nodeAlloc(pvPayload, pptagNodeHandler);
 
-	if(AVLTree_nodeCpm(tagNewInfo, ptagRoot->Event) < 0) {
-		ptagRoot->ptagLeft = AVLTree_insertNode(ptagRoot->ptagLeft, tagNewInfo);
+	if(AVLTree_nodeCmp(pvPayload, ptagRoot->pvPayload) < EQUALS) {
+		ptagRoot->ptagLeft = AVLTree_insertNode(ptagRoot->ptagLeft, pvPayload, pptagNodeHandler);
 	}
 	else {
-		ptagRoot->ptagRight = AVLTree_insertNode(ptagRoot->ptagRight, tagNewInfo);
+		ptagRoot->ptagRight = AVLTree_insertNode(ptagRoot->ptagRight, pvPayload, pptagNodeHandler);
 	}
 
 	portCHAR cBalanced = AVLTree_height(ptagRoot->ptagLeft);
 	cBalanced -= AVLTree_height(ptagRoot->ptagRight);
 
-	portCHAR cCompareValue = AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagLeft->Event);
-	if (cBalanced > 1 && cCompareValue < 0)
+//	portCHAR cCompareValue = AVLTree_nodeCmp(pvPayload, ptagRoot->ptagLeft->pvPayload);
+	if (cBalanced > 1 && AVLTree_nodeCmp(pvPayload, ptagRoot->ptagLeft->pvPayload) < 0)
         return AVLTree_rightRotate(ptagRoot);
 
-	cCompareValue = AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagRight->Event);
-    if (cBalanced < -1 && cCompareValue > 0)
+//	cCompareValue = AVLTree_nodeCmp(pvPayload, ptagRoot->ptagRight->pvPayload);
+    if (cBalanced < -1 && AVLTree_nodeCmp(pvPayload, ptagRoot->ptagRight->pvPayload) > 0)
         return AVLTree_leftRotate(ptagRoot);
 
-    cCompareValue = AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagLeft->Event);
-    if (cBalanced > 1 && cCompareValue > 0)
+//    cCompareValue = AVLTree_nodeCmp(pvPayload, ptagRoot->ptagLeft->pvPayload);
+    if (cBalanced > 1 && AVLTree_nodeCmp(pvPayload, ptagRoot->ptagLeft->pvPayload) > 0)
     {
         ptagRoot->ptagLeft =  AVLTree_leftRotate(ptagRoot->ptagLeft);
         return AVLTree_rightRotate(ptagRoot);
     }
 
-    cCompareValue = AVLTree_nodeCpm(tagNewInfo, ptagRoot->ptagRight->Event);
-    if (cBalanced < -1 && cCompareValue < 0)
+//    cCompareValue = AVLTree_nodeCmp(pvPayload, ptagRoot->ptagRight->pvPayload);
+    if (cBalanced < -1 && AVLTree_nodeCmp(pvPayload, ptagRoot->ptagRight->pvPayload) < 0)
     {
         ptagRoot->ptagRight = AVLTree_rightRotate(ptagRoot->ptagRight);
         return AVLTree_leftRotate(ptagRoot);
@@ -101,25 +102,25 @@ ttag_nodeptr 	AVLTree_insertNode(ttag_nodeptr ptagRoot, ttag_Event tagNewInfo){
 	This function search in AVLTree the node that has tagSearchedInfo
 
     @param	ptagRoot: a pointer to root os AVLTree
-    		tagInfo: a information to be searched in AVLTree
-    @return ttag_nodeptr: pointer to node - Found.
+    		pvPayloadSearched: a information to be searched in AVLTree
+    @return ttag_treeNode: pointer to node - Found.
 						  NULL			  - Not Found
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_getHandler(ttag_nodeptr ptagRoot, ttag_Event tagSearchedInfo) {
+ttag_treeNodePtr AVLTree_getHandler(ttag_treeNodePtr ptagRoot, void* pvPayloadSearched) {
 	if(ptagRoot == NULL)
 		return NULL;
 	else {
-		portCHAR cCompareValue = AVLTree_nodeCpm(ptagRoot->Event, tagSearchedInfo);
-		if(cCompareValue == 0) {
+		portCHAR cCompareValue = AVLTree_nodeCmp(ptagRoot->pvPayload, pvPayloadSearched);
+		if(cCompareValue == EQUALS) {
 			return ptagRoot;
 		}
-		else if(cCompareValue < 0) {
-			return AVLTree_getHandler(ptagRoot->ptagRight, tagSearchedInfo);
+		else if(cCompareValue < SMALLER) {
+			return AVLTree_getHandler(ptagRoot->ptagRight, pvPayloadSearched);
 		}
 		else {
-			return AVLTree_getHandler(ptagRoot->ptagLeft, tagSearchedInfo);
+			return AVLTree_getHandler(ptagRoot->ptagLeft, pvPayloadSearched);
 		}
 
 	}
@@ -129,19 +130,19 @@ ttag_nodeptr AVLTree_getHandler(ttag_nodeptr ptagRoot, ttag_Event tagSearchedInf
 	This function remove the ptagNodeHandler node of AVLTree
 
     @param	ptagRoot: a pointer to root os AVLTree
-    		ptagHandler: a node to be removed from AVLTree
-    @return ttag_nodeptr: pointer to root after remove node.
+    		ptagNodeHandler: a node to be removed from AVLTree
+    @return ttag_treeNodePtr: pointer to root after remove node.
     @author jponeticarvalho
     @date   25/08/2018
 */
-ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptagNodeHandler) {
+ttag_treeNodePtr AVLTree_removeSpecificNode(ttag_treeNodePtr ptagRoot, ttag_treeNodePtr ptagNodeHandler) {
 
 	if(ptagRoot == NULL)
 		return NULL;
 
 	if(ptagRoot == ptagNodeHandler) {
 		if( (ptagRoot->ptagLeft == NULL) || (ptagRoot->ptagRight == NULL) ) {
-			ttag_nodeptr ptagTemp = ptagRoot->ptagLeft ? ptagRoot->ptagLeft:ptagRoot->ptagRight;
+			ttag_treeNodePtr ptagTemp = ptagRoot->ptagLeft ? ptagRoot->ptagLeft:ptagRoot->ptagRight;
 
 			if (ptagTemp == NULL){
 				ptagTemp = ptagRoot;
@@ -152,15 +153,15 @@ ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptag
 			AVLTree_nodeDealloc(ptagTemp);
 		}
 		else{
-			ttag_nodeptr ptagTemp = AVLTree_minValueNode(ptagRoot->ptagRight);
+			ttag_treeNodePtr ptagTemp = AVLTree_minValueNode(ptagRoot->ptagRight);
 
-			ptagRoot->Event = ptagTemp->Event;
+			ptagRoot->pvPayload = ptagTemp->pvPayload;
 
 			ptagRoot->ptagRight = AVLTree_removeSpecificNode(ptagRoot->ptagRight, ptagTemp);
 		}
 	}
 	else {
-		portCHAR cCompareValue = AVLTree_nodeCpm(ptagRoot->Event, ptagNodeHandler->Event);
+		portCHAR cCompareValue = AVLTree_nodeCmp(ptagRoot->pvPayload, ptagNodeHandler->pvPayload);
 		if(cCompareValue > 0) {
 			ptagRoot->ptagLeft = AVLTree_removeSpecificNode(ptagRoot->ptagLeft, ptagNodeHandler);
 		}
@@ -208,17 +209,17 @@ ttag_nodeptr AVLTree_removeSpecificNode(ttag_nodeptr ptagRoot, ttag_nodeptr ptag
 	This function remove the node that contains tagInfo of AVLTree
 
     @param	ptagRoot: a pointer to root os AVLTree
-    		tagInfo: a information to be removed from AVLTree
-    @return ttag_nodeptr: pointer to root after remove node.
+    		pvPayload: a information to be removed from AVLTree
+    @return ttag_treeNodePtr: pointer to root after remove node.
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_removeNode(ttag_nodeptr ptagRoot, ttag_Event tagInfo) {
+ttag_treeNodePtr AVLTree_removeNode(ttag_treeNodePtr ptagRoot, void* pvPayload) {
 	if(ptagRoot == NULL) {
 		return ptagRoot;
 	}
 
-	ttag_nodeptr ptagHandler = AVLTree_getHandler(ptagRoot, tagInfo);
+	ttag_treeNodePtr ptagHandler = AVLTree_getHandler(ptagRoot, pvPayload);
 
 	if(ptagHandler == NULL)
 		return NULL;
@@ -230,11 +231,11 @@ ttag_nodeptr AVLTree_removeNode(ttag_nodeptr ptagRoot, ttag_Event tagInfo) {
 	This function deallocate all node of AVLTree
 
     @param	ptagRoot: a pointer to root os AVLTree
-    @return ttag_nodeptr: pointer to root after deallocate nodes.
+    @return ttag_treeNodePtr: pointer to root after deallocate nodes.
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_clearTree(ttag_nodeptr ptagRoot) {
+ttag_treeNodePtr AVLTree_clearTree(ttag_treeNodePtr ptagRoot) {
 	if(ptagRoot != NULL) {
 		ptagRoot->ptagRight = AVLTree_clearTree(ptagRoot->ptagRight);
 		ptagRoot->ptagLeft = AVLTree_clearTree(ptagRoot->ptagLeft);
@@ -252,7 +253,7 @@ ttag_nodeptr AVLTree_clearTree(ttag_nodeptr ptagRoot) {
     @author jponeticarvalho
     @date   21/08/2018
 */
-void AVLTree_printTree(ttag_nodeptr ptagRoot) {
+void AVLTree_printTree(ttag_treeNodePtr ptagRoot) {
 	if(ptagRoot != NULL) {
 		AVLTree_printNode(ptagRoot);
 		AVLTree_printTree(ptagRoot->ptagLeft);
@@ -268,10 +269,10 @@ void AVLTree_printTree(ttag_nodeptr ptagRoot) {
     @author jponeticarvalho
     @date   21/08/2018
 */
-void AVLTree_printNode(ttag_nodeptr ptagRoot) {
+void AVLTree_printNode(ttag_treeNodePtr ptagRoot) {
 	if(ptagRoot != NULL) {
 		char buffer[50];
-		sprintf(buffer,"Value: %d\nMyString: '%s'\n", ptagRoot->Event.xHash, ptagRoot->Event.pcEventName);
+		sprintf(buffer,"Value: %d\nMyString: '%p'\n", ptagRoot->pvPayload);
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, (char*)buffer);
 	}
 }
@@ -279,23 +280,23 @@ void AVLTree_printNode(ttag_nodeptr ptagRoot) {
 /**
 	This function compares who is larger, the first term, or the second
 
-    @param	tagFirst: first term to be compared
-			tagSecond: second term to be compared
-    @return char: 	 1 to first larger then second
-    				 0 to first equals then second
-					-1 to first smaller then second
+    @param	pvFirst: first term to be compared
+			pvSecond: second term to be compared
+    @return char: 	BIGGER  to first larger then second
+    				EQUALS  to first equals then second
+					SMALLER to first smaller then second
     @author jponeticarvalho
     @date   21/08/2018
 */
-portCHAR AVLTree_nodeCpm(ttag_Event tagFirst, ttag_Event tagSecond) {
-	if(tagFirst.xHash > tagSecond.xHash) {
-		return 1;
+portCHAR AVLTree_nodeCmp(void* pvFirst, void* pvSecond) {
+	if(pvFirst > pvSecond) {
+		return BIGGER;
 	}
-	else if(tagFirst.xHash < tagSecond.xHash) {
-		return -1;
+	else if(pvFirst < pvSecond) {
+		return SMALLER;
 	}
 	else {
-		return 0;
+		return EQUALS;
 	}
 }
 
@@ -307,7 +308,7 @@ portCHAR AVLTree_nodeCpm(ttag_Event tagFirst, ttag_Event tagSecond) {
     @author jponeticarvalho
     @date   21/08/2018
 */
-portCHAR AVLTree_height(ttag_nodeptr ptagRoot) {
+portCHAR AVLTree_height(ttag_treeNodePtr ptagRoot) {
 	if(ptagRoot == NULL)
 		return -1;
 	portCHAR leftHeight = AVLTree_height(ptagRoot->ptagLeft);
@@ -324,17 +325,19 @@ portCHAR AVLTree_height(ttag_nodeptr ptagRoot) {
 	Its a helper function that allocates a new node with the given information
 	and a NULL ptagLeft and ptagRight pointers.
 
-    @param	tagNewInfo: info to set in new node
+    @param	pvPayload: info to set in new node
+    		pptagNodeHandler: a handler to be setted a node allocated
     @return ttag_nodeptr: a pointer to node allocated
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_nodeAlloc(ttag_Event tagNewInfo) {
-	ttag_nodeptr ptagNewNode = (ttag_nodeptr)pvPortMalloc(sizeof(ttag_node));
+ttag_treeNodePtr AVLTree_nodeAlloc(void* pvPayload, ttag_treeNodePtr* pptagNodeHandler) {
+	ttag_treeNodePtr ptagNewNode = (ttag_treeNodePtr)pvPortMalloc(sizeof(ttag_treeNode));
+	(*pptagNodeHandler) = ptagNewNode;
 
-	ptagNewNode->Event = tagNewInfo;
-	ptagNewNode->ptagRight = NULL;
-	ptagNewNode->ptagLeft = NULL;
+	ptagNewNode->pvPayload 	= pvPayload;
+	ptagNewNode->ptagRight 	= NULL;
+	ptagNewNode->ptagLeft 	= NULL;
 
 	return ptagNewNode;
 }
@@ -343,19 +346,14 @@ ttag_nodeptr AVLTree_nodeAlloc(ttag_Event tagNewInfo) {
 	Its a helper function that deallocates a node.
 
     @param	ptagNode: node to be deallocated
-    @return ttag_nodeptr: a pointer to node deallocated
+    @return ttag_treeNode: a pointer to node deallocated
     			NULL - deallocated suceffuly
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_nodeDealloc(ttag_nodeptr ptagNode) {
+ttag_treeNodePtr AVLTree_nodeDealloc(ttag_treeNodePtr ptagNode) {
 
 	if(ptagNode == NULL) return NULL;
-
-	vPortFree(ptagNode->Event.pcEventName);
-	ptagNode->Event.pcEventName = NULL;
-
-
 
 	vPortFree(ptagNode);
 	ptagNode = NULL;
@@ -371,9 +369,9 @@ ttag_nodeptr AVLTree_nodeDealloc(ttag_nodeptr ptagNode) {
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_leftRotate(ttag_nodeptr ptagRoot) {
-	ttag_nodeptr ptagNewRoot = ptagRoot->ptagRight;
-	ttag_nodeptr ptagNewRightSubtree = ptagNewRoot->ptagLeft;
+ttag_treeNodePtr AVLTree_leftRotate(ttag_treeNodePtr ptagRoot) {
+	ttag_treeNodePtr ptagNewRoot = ptagRoot->ptagRight;
+	ttag_treeNodePtr ptagNewRightSubtree = ptagNewRoot->ptagLeft;
 
 	ptagNewRoot->ptagLeft = ptagRoot;
 	ptagRoot->ptagRight = ptagNewRightSubtree;
@@ -390,9 +388,9 @@ ttag_nodeptr AVLTree_leftRotate(ttag_nodeptr ptagRoot) {
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_rightRotate(ttag_nodeptr ptagRoot) {
-	ttag_nodeptr ptagNewRoot = ptagRoot->ptagLeft;
-	ttag_nodeptr ptagNewLeftSubtree = ptagNewRoot->ptagRight;
+ttag_treeNodePtr AVLTree_rightRotate(ttag_treeNodePtr ptagRoot) {
+	ttag_treeNodePtr ptagNewRoot = ptagRoot->ptagLeft;
+	ttag_treeNodePtr ptagNewLeftSubtree = ptagNewRoot->ptagRight;
 
 	ptagNewRoot->ptagRight = ptagRoot;
 	ptagRoot->ptagLeft = ptagNewLeftSubtree;
@@ -408,7 +406,7 @@ ttag_nodeptr AVLTree_rightRotate(ttag_nodeptr ptagRoot) {
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_rightLeftRotate(ttag_nodeptr ptagRoot) {
+ttag_treeNodePtr AVLTree_rightLeftRotate(ttag_treeNodePtr ptagRoot) {
 	ptagRoot->ptagRight = AVLTree_rightRotate(ptagRoot->ptagRight);
 	return AVLTree_leftRotate(ptagRoot);
 }
@@ -421,7 +419,7 @@ ttag_nodeptr AVLTree_rightLeftRotate(ttag_nodeptr ptagRoot) {
     @author jponeticarvalho
     @date   21/08/2018
 */
-ttag_nodeptr AVLTree_leftRightRotate(ttag_nodeptr ptagRoot) {
+ttag_treeNodePtr AVLTree_leftRightRotate(ttag_treeNodePtr ptagRoot) {
 	ptagRoot->ptagLeft = AVLTree_leftRotate(ptagRoot->ptagLeft);
 	return AVLTree_rightRotate(ptagRoot);
 }
@@ -434,8 +432,8 @@ ttag_nodeptr AVLTree_leftRightRotate(ttag_nodeptr ptagRoot) {
     @author jponeticarvalho
     @date   25/08/2018
 */
-ttag_nodeptr AVLTree_minValueNode(ttag_nodeptr ptagRoot) {
-	ttag_nodeptr ptagMinimun = ptagRoot;
+ttag_treeNodePtr AVLTree_minValueNode(ttag_treeNodePtr ptagRoot) {
+	ttag_treeNodePtr ptagMinimun = ptagRoot;
 
 	while(ptagMinimun->ptagLeft != NULL) {
 		ptagMinimun = ptagMinimun->ptagLeft;

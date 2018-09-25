@@ -23,22 +23,22 @@
 void Application_init( void );
 void Application_initI2C( void );
 void Application_initSysTick( void );
-void Application_receiveNewEvent( ttag_nodeptr EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
-void Application_receiveLight( ttag_nodeptr EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
-void Application_createdEventCallback( ttag_nodeptr EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_receiveNewEvent( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_receiveLight( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_createdEventCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
 volatile portULONG msTicks; // counter for 1ms Applications
-ttag_nodeptr event1;
-ttag_nodeptr event2;
-ttag_nodeptr event3;
-ttag_nodeptr event4;
-ttag_nodeptr event5;
+pvEventHandle event1;
+pvEventHandle event2;
+pvEventHandle event3;
+pvEventHandle event4;
+pvEventHandle event5;
 
 void SysTick_Handler(void)
 {
 	msTicks++;
 
-	ttag_nodeptr eventHandler;
+	pvEventHandle eventHandler;
 	portULONG xVar = msTicks;
 
 	//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"Handling new Application interrupt\n");
@@ -86,12 +86,11 @@ void Application_initI2C(void)
 
 void Application_new( void )
 {
-	char* evt1 = "myevent1"; //systick
-	char* evt2 = "myevent2"; //tick
-	char* evt3 = "myevent3";
-	char* evt4 = "myevent4";
-	char* evt5 = "myevent5";
-	ttag_nodeptr id_out;
+	portCHAR* evt1 = "myevent1"; //systick
+	portCHAR* evt2 = "myevent2"; //tick
+	portCHAR* evt3 = "myevent3";
+	portCHAR* evt4 = "myevent4";
+	portCHAR* evt5 = "myevent5";
 
 	Application_initI2C();
 
@@ -103,11 +102,14 @@ void Application_new( void )
 	event3 = uxEvent_createEvent( evt3, strlen( evt3 ) );
 	event4 = uxEvent_createEvent( evt4, strlen( evt4 ) );
 	event5 = uxEvent_createEvent( evt5, strlen( evt5 ) );
+
 	xEvent_subscribe( Application_receiveNewEvent, event1, NULL );
 	xEvent_subscribe( Application_receiveNewEvent, event2, NULL );
 	xEvent_subscribe( Application_receiveNewEvent, event3, NULL );
 	xEvent_subscribe( Application_receiveLight, event4, NULL );
 	xEvent_subscribe( Application_createdEventCallback, event5, NULL );
+
+	event2 = uxEvent_deleteEvent(event2);
 
 	led2_on();
 
@@ -130,27 +132,27 @@ void Application_delete( void )
 
 }
 
-void Application_receiveLight(ttag_nodeptr EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
+void Application_receiveLight(pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
 {
 	int32_t* iLight = (int32_t*)pvPayload;
 
 	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Received light: %d", *iLight);
 }
 
-void Application_receiveNewEvent(ttag_nodeptr EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
+void Application_receiveNewEvent(pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
 {
 	portBASE_TYPE xLight;
 
-	if(EventType == event1) {
+	if( EventType == event1 ) {
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Systick)");
 		xLight = light_read();
 		xEvent_publish( event4, EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
 		led2_invert();
 	}
-	else if(strcmp(EventType->Event.pcEventName, "myevent2" ) == 0) {
+	else if( EventType == event2 ) {
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Tick)");
 	}
-	else if(strcmp(EventType->Event.pcEventName, "myevent3" ) == 0) {
+	else if( EventType == event3 ) {
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Ethernet)");
 	}
 	else {
@@ -158,7 +160,7 @@ void Application_receiveNewEvent(ttag_nodeptr EventType, char* EventName, void* 
 	}
 }
 
-void Application_createdEventCallback( ttag_nodeptr EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize )
+void Application_createdEventCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize )
 {
 	int32_t* iValue = ( int32_t* ) pvPayload;
 
