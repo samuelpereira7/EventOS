@@ -89,8 +89,8 @@ typedef enum enu_Priorities
 }tenuEventPriority;
 
 /* Defines the prototype to which event handler functions must conform.
- * Parameters: event type, event name, subscribe handler, event payload, size of event payload */
-typedef void ( *pdEVENT_HANDLER_FUNCTION )( portBASE_TYPE, char*, void*, void*, portBASE_TYPE );
+ * Parameters: event handler, event name, subscribe handler, event payload, size of event payload */
+typedef void ( *pdEVENT_HANDLER_FUNCTION )( pvEventHandle, char*, void*, void*, portBASE_TYPE );
 
 /*********************************************************
     Public Operations
@@ -108,7 +108,7 @@ portCHAR*  				pxEvent_getVersion( void );
  * SCHEDULER INTERNALS AVAILABLE FOR PORTING PURPOSES
  * documented in EventOS.h
  *----------------------------------------------------------*/
-void 					vEvent_processEvents (void);
+void 					vEvent_processEvents( void );
 
 #ifdef __cplusplus
 }

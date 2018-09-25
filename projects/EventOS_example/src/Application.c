@@ -23,7 +23,7 @@
 void Application_init( void );
 void Application_initI2C( void );
 void Application_initSysTick( void );
-void Application_receiveNewEvent( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_receiveNewEvent( pvEventHandle pvEventHandler, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 void Application_receiveLight( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 void Application_createdEventCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
@@ -139,20 +139,20 @@ void Application_receiveLight(pvEventHandle EventType, char* EventName, void* pv
 	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Received light: %d", *iLight);
 }
 
-void Application_receiveNewEvent(pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
+void Application_receiveNewEvent( pvEventHandle pvEventHandler, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize )
 {
 	portBASE_TYPE xLight;
 
-	if( EventType == event1 ) {
+	if( pvEventHandler == event1 ) {
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Systick)");
 		xLight = light_read();
 		xEvent_publish( event4, EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
 		led2_invert();
 	}
-	else if( EventType == event2 ) {
+	else if( pvEventHandler == event2 ) {
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Tick)");
 	}
-	else if( EventType == event3 ) {
+	else if( pvEventHandler == event3 ) {
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Ethernet)");
 	}
 	else {
