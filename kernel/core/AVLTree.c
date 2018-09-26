@@ -63,7 +63,7 @@ ttag_treeNodePtr AVLTree_insertNode(ttag_treeNodePtr ptagRoot, void* pvPayload, 
 	if(ptagRoot == NULL)
 		return AVLTree_nodeAlloc(pvPayload, pptagNodeHandler);
 
-	if(AVLTree_nodeCmp(pvPayload, ptagRoot->pvPayload) < EQUALS) {
+	if(AVLTree_nodeCmp(pvPayload, ptagRoot->pvPayload) == SMALLER) {
 		ptagRoot->ptagLeft = AVLTree_insertNode(ptagRoot->ptagLeft, pvPayload, pptagNodeHandler);
 	}
 	else {
@@ -112,11 +112,11 @@ ttag_treeNodePtr AVLTree_getHandler(ttag_treeNodePtr ptagRoot, void* pvPayloadSe
 	if(ptagRoot == NULL)
 		return NULL;
 	else {
-		portCHAR cCompareValue = AVLTree_nodeCmp(ptagRoot->pvPayload, pvPayloadSearched);
+		portCHAR cCompareValue = AVLTree_nodeCmp(pvPayloadSearched, ptagRoot->pvPayload);
 		if(cCompareValue == EQUALS) {
 			return ptagRoot;
 		}
-		else if(cCompareValue < SMALLER) {
+		else if(cCompareValue == EQUALS || cCompareValue == BIGGER) {
 			return AVLTree_getHandler(ptagRoot->ptagRight, pvPayloadSearched);
 		}
 		else {

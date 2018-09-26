@@ -398,12 +398,15 @@ pvEventHandle uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxN
 	if( uxNameLength > EVENT_NAME_MAX_LEN ) return NULL;
 
 	pvEventHandle pxReturnValue = pdFAIL;
-	ttag_EventType* ptagSearched;
+	ttag_EventType tagSearched;
+	tagSearched.pcEventName = (portCHAR*)pvPortMalloc(uxNameLength+1);
 
-	ptagSearched->xHash = xEvent_calculateHash( pcEventName, uxNameLength );
-	strncpy( (portCHAR*) ptagSearched->pcEventName, (portCHAR*)pcEventName, uxNameLength );
+	tagSearched.xHash = xEvent_calculateHash( pcEventName, uxNameLength );
+	strncpy( (portCHAR*) tagSearched.pcEventName, (portCHAR*)pcEventName, uxNameLength+1 );
 
-	pxReturnValue = (pvEventHandle)AVLTree_getHandler((CAST_EVENT_TYPE)ptagRoot, (void*)ptagSearched);
+	pxReturnValue = (pvEventHandle)AVLTree_getHandler((CAST_EVENT_TYPE)ptagRoot, (void*)(&tagSearched));
+
+	vPortFree(tagSearched.pcEventName);
 
  	return pxReturnValue;
 }
@@ -707,7 +710,7 @@ portCHAR AVLTree_nodeCmp(void* pvFirst, void* pvSecond) {
 		return SMALLER;
 	}
 	else {
-		if( strcmp( ((ttag_EventType*)pvFirst)->xHash,  ((ttag_EventType*)pvSecond)->xHash ) == 0 )
+		if( strcmp( ((ttag_EventType*)pvFirst)->pcEventName,  ((ttag_EventType*)pvSecond)->pcEventName ) == 0 )
 			return EQUALS;
 		else
 			return BIGGER;
