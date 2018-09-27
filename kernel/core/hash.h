@@ -20,6 +20,14 @@
 #include "stdio.h"
 #include "portable.h"
 
-inline portHASH_TYPE xHash_calculateHash( const portCHAR* data, portUINTEGER len );
+/**
+	This method calculates the hash of a given buffer.
+ 	@param     pcBuffer: data buffer
+			   uiLength: length of the data buffer
+	@return portHASH_TYPE - hash number that was calculated
+	@author samuelpereira7
+	@date   26/09/2018
+*/
+inline portHASH_TYPE xHash_calculateHash( const portCHAR* pcBuffer, portUINTEGER uiLength );
 
 #endif /* HASH_H_ */

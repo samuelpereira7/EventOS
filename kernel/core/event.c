@@ -118,7 +118,6 @@ __PRIVATE_ void 			prvEvent_initializeSubscriberLists( pvEventHandle pxRoot );
 __PRIVATE_ ttag_EventType* 	Event_AllocateEventType( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
 __PRIVATE_ void 			prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, pvEventHandle pxEventType, void* pvSubscriber );
 __PRIVATE_ void 			prvEvent_initializeECBVariables( evtECB* pxECB, pvEventHandle pvEventType, portUBASE_TYPE uxEventPriority );
-__PRIVATE_ portBASE_TYPE 	prxEvent_checkEventType( pvEventHandle xEventType );
 __PRIVATE_ void 			prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portUBASE_TYPE 	prxEvent_getProcessStamp( void );
 __PRIVATE_ void 			prvEvent_updateLifeTime( void );

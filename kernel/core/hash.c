@@ -25,53 +25,54 @@
 // super hash function by Paul Hsieh
 //
 
-portHASH_TYPE xHash_calculateHash( const portCHAR* data, portUINTEGER len )
+portHASH_TYPE xHash_calculateHash( const portCHAR* pcBuffer, portUINTEGER uiLength )
 {
-	portULONG hash = len, tmp;
-	portINTEGER rem;
+	portULONG ulHash = uiLength;
+	portULONG ulTmp;
+	portINTEGER iRem;
 
-    if (len <= 0 || data == NULL) return 0;
+    if (uiLength <= 0 || pcBuffer == NULL) return 0;
 
-    rem = len & 3;
-    len >>= 2;
+    iRem = uiLength & 3;
+    uiLength >>= 2;
 
     /* Main loop */
-    for (;len > 0; len--)
+    for (;uiLength > 0; uiLength--)
     {
-        hash  += GET_16_BITS( data );
-        tmp    = ( GET_16_BITS( data + 2 ) << 11 ) ^ hash;
-        hash   = ( hash << 16 ) ^ tmp;
-        data  += 2 * sizeof( portINTEGER );
-        hash  += hash >> 11;
+        ulHash  += GET_16_BITS( pcBuffer );
+        ulTmp    = ( GET_16_BITS( pcBuffer + 2 ) << 11 ) ^ ulHash;
+        ulHash   = ( ulHash << 16 ) ^ ulTmp;
+        pcBuffer  += 2 * sizeof( portINTEGER );
+        ulHash  += ulHash >> 11;
     }
 
     /* Handle end cases */
-    switch( rem )
+    switch( iRem )
     {
         case 3:
-        	hash += GET_16_BITS( data );
-			hash ^= hash << 16;
-			hash ^= data[ sizeof( portINTEGER ) ] << 18;
-			hash += hash >> 11;
+        	ulHash += GET_16_BITS( pcBuffer );
+			ulHash ^= ulHash << 16;
+			ulHash ^= pcBuffer[ sizeof( portINTEGER ) ] << 18;
+			ulHash += ulHash >> 11;
 			break;
         case 2:
-        	hash += GET_16_BITS( data );
-			hash ^= hash << 11;
-			hash += hash >> 17;
+        	ulHash += GET_16_BITS( pcBuffer );
+			ulHash ^= ulHash << 11;
+			ulHash += ulHash >> 17;
 			break;
         case 1:
-        	hash += *data;
-			hash ^= hash << 10;
-			hash += hash >> 1;
+        	ulHash += *pcBuffer;
+			ulHash ^= ulHash << 10;
+			ulHash += ulHash >> 1;
     }
 
     /* Force "avalanching" of final 127 bits */
-    hash ^= hash << 3;
-    hash += hash >> 5;
-    hash ^= hash << 4;
-    hash += hash >> 17;
-    hash ^= hash << 25;
-    hash += hash >> 6;
+    ulHash ^= ulHash << 3;
+    ulHash += ulHash >> 5;
+    ulHash ^= ulHash << 4;
+    ulHash += ulHash >> 17;
+    ulHash ^= ulHash << 25;
+    ulHash += ulHash >> 6;
 
-    return hash;
+    return ulHash;
 }
