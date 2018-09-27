@@ -23,16 +23,26 @@
 
 #include "EventOS.h"
 #include "event.h"
+#include "AVLTree.h"
 
 #include "Log.h"
 
 /*********************************************************
     private constants.
 *********************************************************/
+#define CAST_EVENT_TYPE ttag_treeNodePtr
 
 /*********************************************************
     private types.
 *********************************************************/
+typedef struct tag_Event {
+
+	xList pxSubscriberList;	/*< Event handler separated by event types. */
+	portCHAR *pcEventName;
+	portHASH_TYPE xHash;
+
+}ttag_EventType;
+
 
 /*
  * Event control block.  A event control block (ECB) is allocated to each event,
@@ -41,8 +51,8 @@
 typedef struct evtEventControlBlock
 {
 	xListNode				xEventListNode;							/*< List node used to place the event in the list. */
-	portBASE_TYPE			xEventPriority;						/*< The priority of the event where 0 is the lowest priority. */
-	portBASE_TYPE			xEventType;
+	portBASE_TYPE			xEventPriority;							/*< The priority of the event where 0 is the lowest priority. */
+	pvEventHandle			pvEventType;
 	signed char				pcEventName[configMAX_EVENT_NAME_LEN];	/*< Descriptive name given to the event when created.  Facilitates debugging only. */
 
 	xList*					pxSubscriberList;						/*< Pointer to the list of event handlers >*/
@@ -56,22 +66,19 @@ typedef struct evtEventControlBlock
  */
 typedef struct evtSubscriber
 {
-	void* pvHandler;
-	portBASE_TYPE			xEventType;
-	pdEVENT_HANDLER_FUNCTION pdEventHandlerFunction;
-
-	xListNode				xSubscriberListNode;					/*< List node used to place the event in the list. */
+	void* 						pvHandler;
+	pvEventHandle				pvEventType;
+	pdEVENT_HANDLER_FUNCTION 	pdEventHandlerFunction;
+	xListNode					xSubscriberListNode;					/*< List node used to place the event in the list. */
 }evtSCB;
-
-/* Lists for events and event handlers. --------------------*/
-__PRIVATE_ xList pxEventsLists[ EVENT_PRIORITY_LAST ];	/*< Prioritized events. */
-__PRIVATE_ xList pxSubscriberLists[ EVENT_TYPE_LAST ];	/*< Event handler separated by event types. */
-
 
 /*********************************************************
     private attributes.
 *********************************************************/
 __PRIVATE_ evtECB* volatile pxCurrentECB = NULL;
+/* Lists for events and event handlers. --------------------*/
+__PRIVATE_ xList pxEventsLists[ EVENT_PRIORITY_LAST ];	/*< Prioritized events. */
+__PRIVATE_ pvEventHandle ptagRoot;
 
 /*********************************************************
     private variables.
@@ -79,6 +86,7 @@ __PRIVATE_ evtECB* volatile pxCurrentECB = NULL;
 __PRIVATE_ volatile portUBASE_TYPE uxCurrentNumberOfEvents 	= 		( portUBASE_TYPE ) 0;
 __PRIVATE_ volatile portUBASE_TYPE uxCurrentNumberOfSubscribers =	( portUBASE_TYPE ) 0;
 __PRIVATE_ volatile portUBASE_TYPE uxProcessStamp = 				( portUBASE_TYPE ) 0;
+__PRIVATE_ volatile portUBASE_TYPE uxNumberOfEventsCreated =		( portUBASE_TYPE ) EVENT_TYPE_LAST;
 
 
 /*********************************************************
@@ -89,7 +97,7 @@ __PRIVATE_ volatile portUBASE_TYPE uxProcessStamp = 				( portUBASE_TYPE ) 0;
  * Place the subscriber represented by pxSCB into the appropriate event queue for.
  * It is inserted at the head of the list.
  */
-#define prvEvent_addSubscriberToList( pxSCB ) vList_insertHead( ( xList* ) &( pxSubscriberLists[ pxSCB->xEventType ] ), &( pxSCB->xSubscriberListNode ) );	\
+#define prvEvent_addSubscriberToList( pxSCB ) vList_insertHead( ( xList* ) &( ((ttag_EventType*)(((CAST_EVENT_TYPE)pxSCB->pvEventType)->pvPayload))->pxSubscriberList ), &( pxSCB->xSubscriberListNode ) );	\
 
 /*
  * Place the event represented by pxECB into the appropriate event priority queue.
@@ -104,20 +112,23 @@ __PRIVATE_ volatile portUBASE_TYPE uxProcessStamp = 				( portUBASE_TYPE ) 0;
 #define prvEvent_removeEventFromList( pxECB ) vList_remove( &( pxECB->xEventListNode ) );	\
 
 
-__PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB );
-__PRIVATE_ void prvEvent_initializeEventLists( void );
-__PRIVATE_ void prvEvent_initializeSubscriberLists( void );
-__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber );
-__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority );
-__PRIVATE_ void prvEvent_incrementProcessStamp( void );
-__PRIVATE_ portUBASE_TYPE prxEvent_getProcessStamp( void );
-__PRIVATE_ void prvEvent_updateLifeTime( void );
-__PRIVATE_ evtECB* prpEvent_getNextEvent( void );
-__PRIVATE_ void prvEvent_increaseEventPriority( evtECB* pxECB );
-__PRIVATE_ void prvEvent_decreaseEventPriority( evtECB* pxECB );
-__PRIVATE_ portBASE_TYPE prxEvent_getEventPriority( evtECB* pxECB );
-__PRIVATE_ void prvEvent_terminateEvent( evtECB* pxECB );
-__PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB );
+__PRIVATE_ void 			prvEvent_initializeEventLists( void );
+__PRIVATE_ void 			prvEvent_initializeSubscriberLists( pvEventHandle pxRoot );
+__PRIVATE_ ttag_EventType* 	Event_AllocateEventType( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
+__PRIVATE_ void 			prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, pvEventHandle pxEventType, void* pvSubscriber );
+__PRIVATE_ void 			prvEvent_initializeECBVariables( evtECB* pxECB, pvEventHandle pvEventType, portUBASE_TYPE uxEventPriority );
+__PRIVATE_ portHASH_TYPE 	xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght );
+__PRIVATE_ portBASE_TYPE 	prxEvent_checkEventType( pvEventHandle xEventType );
+__PRIVATE_ void 			prvEvent_incrementProcessStamp( void );
+__PRIVATE_ portUBASE_TYPE 	prxEvent_getProcessStamp( void );
+__PRIVATE_ void 			prvEvent_updateLifeTime( void );
+__PRIVATE_ evtECB* 			prpEvent_getNextEvent( void );
+__PRIVATE_ void 			prvEvent_increaseEventPriority( evtECB* pxECB );
+__PRIVATE_ void 			prvEvent_decreaseEventPriority( evtECB* pxECB );
+__PRIVATE_ portBASE_TYPE 	prxEvent_getEventPriority( evtECB* pxECB );
+__PRIVATE_ void 			prvEvent_terminateEvent( evtECB* pxECB );
+__PRIVATE_ void 			prvEvent_deleteECB( evtECB* pxECB );
+__PRIVATE_ ttag_EventType* 	Event_DeallocateEventType( ttag_EventType* ptagEvent );
 
 /*********************************************************
     Operations implementation
@@ -139,26 +150,59 @@ __PRIVATE_ void prvEvent_initializeEventLists( void )
 	}
 }
 
-__PRIVATE_ void prvEvent_initializeSubscriberLists( void )
+__PRIVATE_ void prvEvent_initializeSubscriberLists( pvEventHandle pvRoot )
 {
-	unsigned portBASE_TYPE ulEventType;
+	/* The initialization of this list should be done just for default events (see enum "tenuEventType" in "portmacro.h" file).
+	 * This operation is performed automatically for events created at run-time (see function "uxEvent_createEvent").
+	 */
+	if(pvRoot == NULL) return;
+	vList_initialize( ( xList* ) &( ( (ttag_EventType*) ( ( CAST_EVENT_TYPE )pvRoot )->pvPayload )->pxSubscriberList ) );
+	prvEvent_initializeSubscriberLists((pvEventHandle)((CAST_EVENT_TYPE)pvRoot)->ptagLeft);
+	prvEvent_initializeSubscriberLists((pvEventHandle)((CAST_EVENT_TYPE)pvRoot)->ptagRight);
 
-	for( ulEventType = 0; ulEventType < EVENT_TYPE_LAST; ulEventType++ )
-	{
-		vList_initialize( ( xList* ) &( pxSubscriberLists[ ulEventType ] ) );
-	}
 }
 
-__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE xEventType, void* pvSubscriber )
+__PRIVATE_ ttag_EventType* Event_AllocateEventType( portCHAR* pcEventName, portUBASE_TYPE uxNameLength ) {
+
+	ttag_EventType* ptagAlocatedEvent = (ttag_EventType*)pvPortMalloc(sizeof(ttag_EventType));
+
+	if( ptagAlocatedEvent != NULL ) {
+		/* initializing the list of subscribers of the new event */
+		vList_initialize( ( xList* ) &( ptagAlocatedEvent->pxSubscriberList ) );
+
+		ptagAlocatedEvent->pcEventName = (portCHAR*) pvPortMalloc( uxNameLength + 1 );
+
+		if( ptagAlocatedEvent->pcEventName != NULL ) {
+			/* saving the event name */
+			strncpy( (portCHAR*) ptagAlocatedEvent->pcEventName, (portCHAR*)pcEventName, uxNameLength + 1 );
+
+			ptagAlocatedEvent->xHash = xEvent_calculateHash( ptagAlocatedEvent->pcEventName, strlen((const char *)ptagAlocatedEvent->pcEventName) );
+
+			if( ptagAlocatedEvent->xHash == pdFAIL ) {
+				/* wild error, aborting */
+				vPortFree( ptagAlocatedEvent->pcEventName );
+				ptagAlocatedEvent->pcEventName = NULL;
+				vPortFree( ptagAlocatedEvent );
+				return NULL;
+			}
+		}
+		else {
+			vPortFree( ptagAlocatedEvent );
+			return NULL;
+		}
+	}
+
+	return ptagAlocatedEvent;
+}
+
+__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, pvEventHandle pvEventType, void* pvSubscriber )
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( xEventType >= EVENT_TYPE_LAST )
-	{
-		xEventType = EVENT_TYPE_LAST - 1;
-	}
+	if( pvEventType == NULL )
+		return;
 
-	pxSCB->xEventType = xEventType;
+	pxSCB->pvEventType = pvEventType;
 	pxSCB->pdEventHandlerFunction = pFunction;
 	pxSCB->pvHandler = pvSubscriber;
 
@@ -169,29 +213,27 @@ __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_
 	listSET_LIST_NODE_OWNER((xListNode*) &( pxSCB->xSubscriberListNode ), pxSCB );
 }
 
-__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE uxEventType, portUBASE_TYPE uxEventPriority )
+__PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, pvEventHandle pvEventType, portUBASE_TYPE uxEventPriority )
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( uxEventType >= EVENT_TYPE_LAST )
-	{
-		uxEventType = EVENT_TYPE_LAST - 1;
-	}
+	if( pvEventType == NULL )
+		return;
 
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
 	if( uxEventPriority >= EVENT_PRIORITY_LAST )
 	{
-		uxEventType = EVENT_PRIORITY_LAST - 1;
+		uxEventPriority = EVENT_PRIORITY_LAST - 1;
 	}
 
-	pxECB->xEventType = uxEventType;
+	pxECB->pvEventType = pvEventType;
 	pxECB->xEventPriority = uxEventPriority;
 	pxECB->pvPayload = NULL;
 	pxECB->xPayloadSize = 0;
 
 	/*Easier to access and run over the subscribers list*/
-	pxECB->pxSubscriberList = (& pxSubscriberLists[ uxEventType ]);
+	pxECB->pxSubscriberList = ( &( ((ttag_EventType*)(((CAST_EVENT_TYPE)pvEventType)->pvPayload))->pxSubscriberList ) );
 
 	vList_initializeNode( &( pxECB->xEventListNode ) );
 
@@ -202,14 +244,73 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, portUBASE_TYPE u
 	listSET_LIST_NODE_VALUE( &( pxECB->xEventListNode ), ( portBASE_TYPE ) prxEvent_getProcessStamp());
 }
 
+/*
+ * 			TODO
+ * Insert a new hash algorithm
+ */
+
+__PRIVATE_ portHASH_TYPE xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght )
+{
+	/* Random hashing implementation. Change it for the love of God. */
+	if( pcArray == NULL ) return pdFAIL;
+	if( xArrayLenght <= 0 ) return pdFAIL;
+
+	portUBASE_TYPE xHash = 377767;
+	portBASE_TYPE xIndex;
+
+	for( xIndex = 0; xIndex < xArrayLenght; xIndex++ )
+	{
+		xHash *= pcArray[ xIndex ];
+	}
+
+	if( xHash == 0 )
+	{
+		xHash = 52341235;
+	}
+
+	return xHash;
+}
+
+/*
+ * 			TODO
+ * When the AVL tree is inserted, change this function to validade.
+ */
+__PRIVATE_ portBASE_TYPE prxEvent_checkEventType( pvEventHandle pvEventType )
+{
+	if((pvEventHandle)AVLTree_getHandler((CAST_EVENT_TYPE)ptagRoot, ((CAST_EVENT_TYPE)pvEventType)->pvPayload) == pvEventType) return pdTRUE;
+	else return pdFAIL;
+}
+
 __PRIVATE_ void prvEvent_incrementProcessStamp( void )
 {
 	uxProcessStamp++;
 }
 
+/**
+	This function initialize all the components of the system.
+	It must be called before the scheduler starter function.
+
+    @param void
+    @return void
+    @author samuelpereira7
+    @date   07/08/2018
+*/
+void vEvent_initSystem( void )
+{
+	/* Start RTC */
+	portSTART_RTC();
+
+	/* Initalize the pointer to event tree with NULL*/
+	ptagRoot = NULL;
+
+	/* Initialize the event list before scheduler starts */
+	prvEvent_initializeEventLists();
+
+}
 
 /**
 	Event start scheduler. This is the method that starts the scheduler process.
+	It must be called after the system initializer function.
 
     @param void
     @return void
@@ -218,12 +319,6 @@ __PRIVATE_ void prvEvent_incrementProcessStamp( void )
 */
 void vEvent_startScheduler( void )
 {
-	/* Start RTC */
-	portSTART_RTC();
-
-	/* Initialize the event list before scheduler start */
-	prvEvent_initializeEventLists();
-
 	/* Setting up the system for sleep mode in the specific. */
 	if( xPortStartScheduler() )
 	{
@@ -236,6 +331,87 @@ void vEvent_startScheduler( void )
 	}
 }
 
+
+/**
+	This method creates new events. Such events can be used later on.
+
+	@param     pcEventName: event name
+			   uxNameLength: length of the event name
+	@return pvEventHandle - identifier (type) of the new event or NULL in case of failure
+	@author samuelpereira7/jponeticarvalho
+	@date   18/09/2018
+*/
+pvEventHandle uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
+{
+	if( pcEventName == NULL ) return pdFAIL;
+	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
+	if( uxNumberOfEventsCreated > EVENT_TOTAL_EVENTS) return pdFAIL;
+
+	ttag_EventType* ptagEvent = NULL;
+	CAST_EVENT_TYPE	pvNewEventHandler = NULL;
+
+	ptagEvent = Event_AllocateEventType(pcEventName, uxNameLength);
+
+	if(ptagEvent != NULL) {
+		/* saving the event into avl tree */
+		ptagRoot = AVLTree_insertNode((CAST_EVENT_TYPE)ptagRoot, (void*)ptagEvent, &(pvNewEventHandler));
+		uxNumberOfEventsCreated++;
+	}
+	else
+	{
+		return NULL;
+	}
+
+	return pvNewEventHandler;
+}
+
+/**
+	This method creates new events. Such events can be used later on.
+
+	@param     pcEventName: event name
+			   uxNameLength: length of the event name
+	@return portUBASE_TYPE - identifier (type) of the new event or pdFAIL in case of failure
+	@author jponeticarvalho
+	@date   24/09/2018
+*/
+pvEventHandle uxEvent_deleteEvent( pvEventHandle pvNodeHandler )
+{
+	if( pvNodeHandler == NULL ) return pdFAIL;
+
+	((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload = Event_DeallocateEventType((ttag_EventType*)((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload);
+	if( AVLTree_removeSpecificNode((CAST_EVENT_TYPE)ptagRoot, (CAST_EVENT_TYPE)pvNodeHandler) == NULL ) return pdTRUE;
+	else return pdFAIL;
+
+}
+
+/**
+	This method searches for a an event by its name.
+ 	@param     pcEventName: event name
+			   uxNameLength: length of the event name
+	@return pvEventHandle - identifier (type) of the new event or NULL in case of failure
+	@author jponeticarvalho
+	@date   18/09/2018
+*/
+pvEventHandle uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
+{
+	if( pcEventName == NULL ) return NULL;
+	if( uxNameLength > EVENT_NAME_MAX_LEN ) return NULL;
+
+	pvEventHandle pxReturnValue = pdFAIL;
+	ttag_EventType tagSearched;
+	tagSearched.pcEventName = (portCHAR*)pvPortMalloc(uxNameLength+1);
+
+	tagSearched.xHash = xEvent_calculateHash( pcEventName, uxNameLength );
+	strncpy( (portCHAR*) tagSearched.pcEventName, (portCHAR*)pcEventName, uxNameLength+1 );
+
+	pxReturnValue = (pvEventHandle)AVLTree_getHandler((CAST_EVENT_TYPE)ptagRoot, (void*)(&tagSearched));
+
+	vPortFree(tagSearched.pcEventName);
+
+ 	return pxReturnValue;
+}
+
+
 /*
 	Event subscribe. Function subscribes a event handler to receive notifications about as specific event
 
@@ -246,10 +422,10 @@ void vEvent_startScheduler( void )
     @author Edielson
     @date   15/09/2017
 */
-signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE ulEventType, void* pvSubscriber)
+signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEventHandle pvEventType, void* pvSubscriber )
 {
-	if(ulEventType >= (portBASE_TYPE)EVENT_TYPE_LAST) return pdFALSE;
-	if(!pFunction) return pdFALSE;
+	if( pvEventType == NULL ) return pdFALSE;
+	if( !pvFunction ) return pdFALSE;
 
 	signed portBASE_TYPE xReturn = pdFALSE;
 
@@ -257,7 +433,7 @@ signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portB
 	if(pxNewSubscriber)
 	{
 		/*Initializing variables*/
-		prvEvent_initializeSCBVariables(pxNewSubscriber,pFunction,ulEventType,pvSubscriber);
+		prvEvent_initializeSCBVariables( pxNewSubscriber, pvFunction, pvEventType, pvSubscriber );
 
 		portDISABLE_INTERRUPTS();
 		{
@@ -268,7 +444,7 @@ signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portB
 			{
 				/* This is the first subscriber to be created so do the preliminary
 				required initialization. */
-				prvEvent_initializeSubscriberLists();
+				prvEvent_initializeSubscriberLists(ptagRoot);
 			}
 			prvEvent_addSubscriberToList( pxNewSubscriber );
 
@@ -288,17 +464,17 @@ signed portBASE_TYPE xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portB
     @date   22/09/2014
 */
 
-signed portBASE_TYPE xEvent_publish (portBASE_TYPE xEventType, portBASE_TYPE xPriority, void* pvPayload, portBASE_TYPE xPayloadSize)
+signed portBASE_TYPE xEvent_publish( pvEventHandle pvEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize )
 {
-	if (xEventType >= EVENT_TYPE_LAST) return pdFALSE;
-	if (xPriority >= EVENT_PRIORITY_LAST) return pdFALSE;
+	if( pvEventType == NULL ) return pdFALSE;
+	if( uxPriority >= EVENT_PRIORITY_LAST ) return pdFALSE;
 
 	portBASE_TYPE xStatus = pdFALSE;
 
 	evtECB* pxNewEvent = (evtECB*)pvPortMalloc(sizeof(evtECB));
 	if(pxNewEvent)
 	{
-		prvEvent_initializeECBVariables( pxNewEvent, xEventType, xPriority );
+		prvEvent_initializeECBVariables( pxNewEvent, pvEventType, uxPriority );
 
 		if( pvPayload != NULL )
 		{
@@ -345,9 +521,9 @@ void vEvent_processEvents (void)
 		listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );
 		while(pxSCB)
 		{
-			if( ( pxSCB->xEventType == pxCurrentECB->xEventType ) && ( pxSCB->pdEventHandlerFunction ) )
+			if( ( pxSCB->pvEventType == pxCurrentECB->pvEventType ) && ( pxSCB->pdEventHandlerFunction ) )
 			{
-				pxSCB->pdEventHandlerFunction( pxSCB->xEventType, pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
+				pxSCB->pdEventHandlerFunction( (void*)pxSCB->pvEventType, (char*)( ((ttag_EventType*)(((CAST_EVENT_TYPE)pxSCB->pvEventType)->pvPayload))->pcEventName ), pxSCB->pvHandler, pxCurrentECB->pvPayload, pxCurrentECB->xPayloadSize ); //call event related function
 			}
 			/*take the next subscriber from the sub list related to the event*/
 			listGET_OWNER_OF_NEXT_NODE( pxSCB, ( xList* ) pxCurrentECB->pxSubscriberList );
@@ -509,6 +685,38 @@ __PRIVATE_ void prvEvent_deleteECB( evtECB* pxECB )
 	pxECB = NULL;
 }
 
+__PRIVATE_ ttag_EventType* Event_DeallocateEventType( ttag_EventType* ptagEvent ) {
+
+	if( ptagEvent == NULL ) return NULL;
+
+	//TODO Implement Dealocater function to xList
+	vList_deinitialize(&ptagEvent->pxSubscriberList);
+
+	vPortFree( ptagEvent->pcEventName );
+	ptagEvent->pcEventName = NULL;
+
+	vPortFree(ptagEvent);
+	ptagEvent = NULL;
+
+	return ptagEvent;
+}
+
+portCHAR AVLTree_nodeCmp(void* pvFirst, void* pvSecond) {
+
+	if( ((ttag_EventType*)pvFirst)->xHash > ((ttag_EventType*)pvSecond)->xHash ) {
+		return BIGGER;
+	}
+	else if( ((ttag_EventType*)pvFirst)->xHash < ((ttag_EventType*)pvSecond)->xHash ) {
+		return SMALLER;
+	}
+	else {
+		if( strcmp( ((ttag_EventType*)pvFirst)->pcEventName,  ((ttag_EventType*)pvSecond)->pcEventName ) == 0 )
+			return EQUALS;
+		else
+			return BIGGER;
+	}
+
+}
 
 /**
 	Get event scheduler version

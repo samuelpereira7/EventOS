@@ -20,6 +20,7 @@
 
 #include "portable.h"
 #include "list.h"
+#include "AVLTree.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -71,6 +72,11 @@ typedef enum enu_Events
 	EVENT_TYPE_LAST
 }tenuEventType;
 
+#define EVENT_RUNTIME_EVENTS	10
+
+#define EVENT_TOTAL_EVENTS     	( EVENT_TYPE_LAST + EVENT_RUNTIME_EVENTS )
+
+#define EVENT_NAME_MAX_LEN		10
 
 typedef enum enu_Priorities
 {
@@ -82,23 +88,27 @@ typedef enum enu_Priorities
 	EVENT_PRIORITY_LAST
 }tenuEventPriority;
 
-/* Defines the prototype to which event handler functions must conform. */
-typedef void (*pdEVENT_HANDLER_FUNCTION)( portBASE_TYPE, void*, void*, portBASE_TYPE );
+/* Defines the prototype to which event handler functions must conform.
+ * Parameters: event handler, event name, subscribe handler, event payload, size of event payload */
+typedef void ( *pdEVENT_HANDLER_FUNCTION )( pvEventHandle, char*, void*, void*, portBASE_TYPE );
 
 /*********************************************************
     Public Operations
 *********************************************************/
-
+void					vEvent_initSystem( void );
 void 					vEvent_startScheduler( void );
-signed portBASE_TYPE 	xEvent_subscribe (pdEVENT_HANDLER_FUNCTION pFunction, portBASE_TYPE	ulEventType, void* pvSubscriber);
-signed portBASE_TYPE 	xEvent_publish (portBASE_TYPE ulEventType, portBASE_TYPE ulPriority, void* pvPayload, portBASE_TYPE ulPayloadSize);
-portCHAR*  				pxEvent_getVersion(void);
+pvEventHandle			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
+pvEventHandle			uxEvent_deleteEvent( pvEventHandle pvNodeHandler );
+pvEventHandle			uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
+signed portBASE_TYPE 	xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEventHandle pvEventType, void* pvSubscriber );
+signed portBASE_TYPE	xEvent_publish( pvEventHandle pvEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize );
+portCHAR*  				pxEvent_getVersion( void );
 
 /*-----------------------------------------------------------
  * SCHEDULER INTERNALS AVAILABLE FOR PORTING PURPOSES
  * documented in EventOS.h
  *----------------------------------------------------------*/
-void 					vEvent_processEvents (void);
+void 					vEvent_processEvents( void );
 
 #ifdef __cplusplus
 }

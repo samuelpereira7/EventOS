@@ -3,6 +3,7 @@
 #include <NXP/crp.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "event.h"
 
@@ -19,41 +20,40 @@
     private operations.
 *********************************************************/
 
-void Application_init(void);
-void Application_initI2C(void);
-void Application_initSysTick(void);
-void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize);
-void Application_receiveLight(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize);
+void Application_init( void );
+void Application_initI2C( void );
+void Application_initSysTick( void );
+void Application_receiveNewEvent( pvEventHandle pvEventHandler, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_receiveLight( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_createdEventCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_genericCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
 volatile portULONG msTicks; // counter for 1ms Applications
+pvEventHandle event[15];
 
 void SysTick_Handler(void)
 {
-
 	msTicks++;
+
+	portULONG xVar = msTicks;
 
 	//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"Handling new Application interrupt\n");
 
-	if(msTicks % 1000 == 0)
+	if( msTicks % 1000 == 0 )
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: TICK");
-		xEvent_publish(EVENT_SYS_TICK, EVENT_PRIORITY_LOW, NULL, 0);
-		//xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
-		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
-		//xEvent_publish(EVENT_SYS_UART, EVENT_PRIORITY_MEDIUM, NULL, 0);
-		//xEvent_publish(EVENT_SYS_USB, EVENT_PRIORITY_MEDIUM, NULL, 0);
-		//xEvent_publish(EVENT_APP_TEMPERATURE, EVENT_PRIORITY_MEDIUM, NULL, 0);
+		xEvent_publish(event[0], EVENT_PRIORITY_HIGH, NULL, 0);
+		xEvent_publish(event[1], EVENT_PRIORITY_LOW, NULL, 0);
 	}
-	if(msTicks % 5000 == 0)
+	if( msTicks % 5000 == 0 )
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: ETHERNET");
-		xEvent_publish(EVENT_SYS_ETHERNET, EVENT_PRIORITY_MEDIUM, NULL, 0);
+		xEvent_publish(event[2], EVENT_PRIORITY_MEDIUM, NULL, 0);
 	}
-	if(msTicks % 10000 == 0)
+	if( msTicks % 10000 == 0 )
 	{
 		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: Application");
-		xEvent_publish(EVENT_SYS_SYSTICK, EVENT_PRIORITY_HIGH, NULL, 0);
-
+		xEvent_publish(event[4], EVENT_PRIORITY_MEDIUM, &xVar, sizeof(xVar));
 	    msTicks = 0;
 	}
 }
@@ -80,26 +80,40 @@ void Application_initI2C(void)
 }
 
 
-void Application_new(void)
+void Application_new( void )
 {
+	portCHAR evt[20];
+	portCHAR i = 0;
+
 	Application_initI2C();
 
 	led2_init();
 	light_enable();
 
-	xEvent_subscribe(Application_receiveNewEvent,
-					 EVENT_SYS_TICK,
-					 NULL);
+	for(;i<10;i++) {
+		sprintf((char*)evt, (const char*)"myevent%d", i+1);
+		event[i] = uxEvent_createEvent( evt, strlen( (const char *)evt ) );
+	}
 
-	xEvent_subscribe(Application_receiveNewEvent,
-						 EVENT_SYS_SYSTICK,
-						 NULL);
+	if(event[0] != NULL)
+		xEvent_subscribe( Application_receiveNewEvent, event[0], NULL );
+	if(event[1] != NULL)
+		xEvent_subscribe( Application_receiveNewEvent, event[1], NULL );
+	if(event[2] != NULL)
+		xEvent_subscribe( Application_receiveNewEvent, event[2], NULL );
+	if(event[3] != NULL)
+		xEvent_subscribe( Application_receiveLight, event[3], NULL );
+	if(event[4] != NULL)
+		xEvent_subscribe( Application_createdEventCallback, event[4], NULL );
 
-	xEvent_subscribe(Application_receiveNewEvent,
-							 EVENT_SYS_ETHERNET,
-							 NULL);
+	for(i=5;i<10;i++) {
+		if(event[i] != NULL)
+			xEvent_subscribe(Application_genericCallback, event[i], NULL);
+	}
 
-	xEvent_subscribe(Application_receiveLight, EVENT_APP_LIGHT, NULL);
+	event[1] = NULL;
+
+	event[1] = uxEvent_getEventHandler(("myevent2"), strlen("myevent2"));
 
 	led2_on();
 
@@ -107,9 +121,8 @@ void Application_new(void)
 }
 
 
-void Application_initSysTick(void)
+void Application_initSysTick( void )
 {
-
 	// Setup Systick Timer to interrupt at 1 msec intervals
 	if (SysTick_Config(SystemCoreClock/1000))
 	{
@@ -118,40 +131,60 @@ void Application_initSysTick(void)
 	return;
 }
 
-void Application_delete(void)
+void Application_delete( void )
 {
 
 }
 
-void Application_receiveLight(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
+void Application_receiveLight(pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
 {
 	int32_t* iLight = (int32_t*)pvPayload;
 
 	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Received light: %d", *iLight);
 }
 
-void Application_receiveNewEvent(portBASE_TYPE EventType, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
+void Application_receiveNewEvent( pvEventHandle pvEventHandler, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize )
 {
 	portBASE_TYPE xLight;
 
-	switch (EventType)
-	{
-		case EVENT_SYS_SYSTICK:
-			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Systick)");
-			xLight = light_read();
-			xEvent_publish( EVENT_APP_LIGHT, EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
-		    led2_invert();
-			break;
-		case EVENT_SYS_TICK:
-			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Tick)");
-			break;
-		case EVENT_SYS_ETHERNET:
-			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Ethernet)");
-			break;
-		default:
-			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_ERROR,"[app] Event not expected");
-			break;
+	if( pvEventHandler == event[0] ) {
+		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Systick)");
+		xLight = light_read();
+		xEvent_publish( event[3], EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
+		led2_invert();
 	}
+	else if( pvEventHandler == event[1] ) {
+		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Tick)");
+	}
+	else if( pvEventHandler == event[2] ) {
+		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Ethernet)");
+	}
+	else {
+		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_ERROR,"[app] Event not expected");
+	}
+}
+
+void Application_createdEventCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize )
+{
+	int32_t* iValue = ( int32_t* ) pvPayload;
+	int32_t iPosValue = 0;
+
+	if(EventName != NULL)
+		iPosValue = (rand())%10;
+
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] xxxx Received data from created event: %d; Event name: [%s]", *iValue, EventName );
+
+	if( iPosValue > 4 ) {
+		if(event[iPosValue] != NULL) {
+			xEvent_publish(event[iPosValue], EVENT_PRIORITY_LOW, (void*)iValue, sizeof(*iValue));
+		}
+	}
+}
+
+void Application_genericCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {
+	int32_t* iValue = ( int32_t* ) pvPayload;
+
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] GENERIC FUNCTION Received data from created event: %d; Event name: [%s]", *iValue, EventName );
 }
 
 portULONG Application_getMsTicks(void)

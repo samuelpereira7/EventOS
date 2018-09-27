@@ -9,7 +9,7 @@
 
 #include "EventOS.h"
 #include "event.h"
-
+#include "AVLTree.h"
 
 #include "Application.h"
 #include "Log.h"
@@ -17,6 +17,10 @@
 int main()
 {
 	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, (char*)pxEvent_getVersion());
+
+	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, (char*)pxEvent_getVersion());
+
+	vEvent_initSystem();
 
 	Application_new();
 

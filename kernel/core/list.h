@@ -131,7 +131,7 @@ typedef struct xLIST
 #define listIS_EMPTY( pxList ) ( ( pxList )->uxNumberOfNodes == ( unsigned portBASE_TYPE ) 0 )
 
 /**
-	This method is responsible responsible for initializing
+	This method is responsible for initializing
 	a linked list structure.
 
     @param void
@@ -139,10 +139,23 @@ typedef struct xLIST
     @author edielson
     @date   14/09/2017
 */
-void vList_initialize(xList* pxList);
+void vList_initialize( xList* pxList );
+
+/**
+	This method is responsible for deinitializing
+	a linked list structure.
+
+    @param void
+    @return void
+    @author samuelp
+    @date   24/09/2018
+*/
+void vList_deinitialize( xList* pxList );
+
 void vList_initializeNode( xListNode* pxNode );
 void vList_insertHead( xList* pxList, xListNode* pxNewListNode );
 void vList_insert( xList* pxList, xListNode *pxNewListNode );
 void vList_remove( xListNode* pxNodeToRemove );
+
 
 #endif /* LIST_H_ */
