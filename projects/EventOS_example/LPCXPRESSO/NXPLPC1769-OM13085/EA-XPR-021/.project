@@ -90,6 +90,11 @@
 			<locationURI>PARENT-5-PROJECT_LOC/kernel/core/event.c</locationURI>
 		</link>
 		<link>
+			<name>Kernel/Core/hash.c</name>
+			<type>1</type>
+			<location>C:/Users/Samuel/_Repos/EventOS/kernel/core/hash.c</location>
+		</link>
+		<link>
 			<name>Kernel/Core/list.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/kernel/core/list.c</locationURI>

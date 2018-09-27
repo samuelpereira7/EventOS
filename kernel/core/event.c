@@ -24,6 +24,7 @@
 #include "EventOS.h"
 #include "event.h"
 #include "AVLTree.h"
+#include "hash.h"
 
 #include "Log.h"
 
@@ -117,8 +118,6 @@ __PRIVATE_ void 			prvEvent_initializeSubscriberLists( pvEventHandle pxRoot );
 __PRIVATE_ ttag_EventType* 	Event_AllocateEventType( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
 __PRIVATE_ void 			prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, pvEventHandle pxEventType, void* pvSubscriber );
 __PRIVATE_ void 			prvEvent_initializeECBVariables( evtECB* pxECB, pvEventHandle pvEventType, portUBASE_TYPE uxEventPriority );
-__PRIVATE_ portHASH_TYPE 	xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght );
-__PRIVATE_ portBASE_TYPE 	prxEvent_checkEventType( pvEventHandle xEventType );
 __PRIVATE_ void 			prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portUBASE_TYPE 	prxEvent_getProcessStamp( void );
 __PRIVATE_ void 			prvEvent_updateLifeTime( void );
@@ -176,7 +175,7 @@ __PRIVATE_ ttag_EventType* Event_AllocateEventType( portCHAR* pcEventName, portU
 			/* saving the event name */
 			strncpy( (portCHAR*) ptagAlocatedEvent->pcEventName, (portCHAR*)pcEventName, uxNameLength + 1 );
 
-			ptagAlocatedEvent->xHash = xEvent_calculateHash( ptagAlocatedEvent->pcEventName, strlen((const char *)ptagAlocatedEvent->pcEventName) );
+			ptagAlocatedEvent->xHash = xHash_calculateHash( ptagAlocatedEvent->pcEventName, strlen((const char *)ptagAlocatedEvent->pcEventName) );
 
 			if( ptagAlocatedEvent->xHash == pdFAIL ) {
 				/* wild error, aborting */
@@ -242,43 +241,6 @@ __PRIVATE_ void prvEvent_initializeECBVariables( evtECB* pxECB, pvEventHandle pv
 	listSET_LIST_NODE_OWNER((xListNode*) &( pxECB->xEventListNode ), pxECB );
 	/* Event lists are always in priority order. */
 	listSET_LIST_NODE_VALUE( &( pxECB->xEventListNode ), ( portBASE_TYPE ) prxEvent_getProcessStamp());
-}
-
-/*
- * 			TODO
- * Insert a new hash algorithm
- */
-
-__PRIVATE_ portHASH_TYPE xEvent_calculateHash( portCHAR* pcArray, portBASE_TYPE xArrayLenght )
-{
-	/* Random hashing implementation. Change it for the love of God. */
-	if( pcArray == NULL ) return pdFAIL;
-	if( xArrayLenght <= 0 ) return pdFAIL;
-
-	portUBASE_TYPE xHash = 377767;
-	portBASE_TYPE xIndex;
-
-	for( xIndex = 0; xIndex < xArrayLenght; xIndex++ )
-	{
-		xHash *= pcArray[ xIndex ];
-	}
-
-	if( xHash == 0 )
-	{
-		xHash = 52341235;
-	}
-
-	return xHash;
-}
-
-/*
- * 			TODO
- * When the AVL tree is inserted, change this function to validade.
- */
-__PRIVATE_ portBASE_TYPE prxEvent_checkEventType( pvEventHandle pvEventType )
-{
-	if((pvEventHandle)AVLTree_getHandler((CAST_EVENT_TYPE)ptagRoot, ((CAST_EVENT_TYPE)pvEventType)->pvPayload) == pvEventType) return pdTRUE;
-	else return pdFAIL;
 }
 
 __PRIVATE_ void prvEvent_incrementProcessStamp( void )
@@ -401,7 +363,7 @@ pvEventHandle uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxN
 	ttag_EventType tagSearched;
 	tagSearched.pcEventName = (portCHAR*)pvPortMalloc(uxNameLength+1);
 
-	tagSearched.xHash = xEvent_calculateHash( pcEventName, uxNameLength );
+	tagSearched.xHash = xHash_calculateHash( pcEventName, uxNameLength );
 	strncpy( (portCHAR*) tagSearched.pcEventName, (portCHAR*)pcEventName, uxNameLength+1 );
 
 	pxReturnValue = (pvEventHandle)AVLTree_getHandler((CAST_EVENT_TYPE)ptagRoot, (void*)(&tagSearched));
