@@ -33,8 +33,8 @@ extern "C" {
  */
 
 /* Type definitions. */
-#define portCHAR		char
-#define portUCHAR		unsigned portCHAR
+#define portCHAR		signed char
+#define portUCHAR		unsigned char
 #define portINTEGER		short int
 #define portUINTEGER	unsigned portINTEGER
 #define portFLOAT		float
@@ -51,6 +51,8 @@ extern "C" {
 #define portMAX_DELAY 		( portTICK_TYPE ) 0xffffffff
 #define portMAX_BASETYPE 	( portBASE_TYPE ) 0x7fffffff
 #define portMAX_UBASETYPE	( portUBASE_TYPE ) 0xffffffff
+
+#define portHASH_TYPE	portULONG
 
 #define pdTRUE		( 1 )
 #define pdFALSE		( 0 )
