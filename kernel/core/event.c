@@ -87,7 +87,7 @@ __PRIVATE_ pvEventHandle ptagRoot;
 __PRIVATE_ volatile portUBASE_TYPE uxCurrentNumberOfEvents 	= 		( portUBASE_TYPE ) 0;
 __PRIVATE_ volatile portUBASE_TYPE uxCurrentNumberOfSubscribers =	( portUBASE_TYPE ) 0;
 __PRIVATE_ volatile portUBASE_TYPE uxProcessStamp = 				( portUBASE_TYPE ) 0;
-__PRIVATE_ volatile portUBASE_TYPE uxNumberOfEventsCreated =		( portUBASE_TYPE ) EVENT_TYPE_LAST;
+__PRIVATE_ volatile portUBASE_TYPE uxNumberOfEventsCreated =		( portUBASE_TYPE ) 0;
 
 
 /*********************************************************
@@ -312,17 +312,22 @@ pvEventHandle uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameL
 	ttag_EventType* ptagEvent = NULL;
 	CAST_EVENT_TYPE	pvNewEventHandler = NULL;
 
-	ptagEvent = Event_AllocateEventType(pcEventName, uxNameLength);
-
-	if(ptagEvent != NULL) {
-		/* saving the event into avl tree */
-		ptagRoot = AVLTree_insertNode((CAST_EVENT_TYPE)ptagRoot, (void*)ptagEvent, &(pvNewEventHandler));
-		uxNumberOfEventsCreated++;
-	}
-	else
+	portDISABLE_INTERRUPTS();
 	{
-		return NULL;
+		ptagEvent = Event_AllocateEventType(pcEventName, uxNameLength);
+
+
+		if(ptagEvent != NULL) {
+			/* saving the event into avl tree */
+			ptagRoot = (pvEventHandle)AVLTree_insertNode((CAST_EVENT_TYPE)ptagRoot, (void*)ptagEvent, &(pvNewEventHandler));
+			uxNumberOfEventsCreated++;
+		}
+		else
+		{
+			return NULL;
+		}
 	}
+	portENABLE_INTERRUPTS();
 
 	return pvNewEventHandler;
 }
@@ -340,10 +345,14 @@ pvEventHandle uxEvent_deleteEvent( pvEventHandle pvNodeHandler )
 {
 	if( pvNodeHandler == NULL ) return pdFAIL;
 
-	((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload = Event_DeallocateEventType((ttag_EventType*)((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload);
-	if( AVLTree_removeSpecificNode((CAST_EVENT_TYPE)ptagRoot, (CAST_EVENT_TYPE)pvNodeHandler) == NULL ) return pdTRUE;
-	else return pdFAIL;
+	portDISABLE_INTERRUPTS();
+	{
+		((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload = Event_DeallocateEventType((ttag_EventType*)((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload);
+		ptagRoot = (pvEventHandle)AVLTree_removeSpecificNode((CAST_EVENT_TYPE)ptagRoot, (CAST_EVENT_TYPE)pvNodeHandler);
+	}
+	portENABLE_INTERRUPTS();
 
+	return ptagRoot;
 }
 
 /**

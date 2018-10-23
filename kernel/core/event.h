@@ -42,41 +42,11 @@ extern "C" {
  */
 typedef void* pvEventHandle;
 
-typedef enum enu_Events
-{
-	/*Kernel events*/
-	EVENT_KERNEL_SLEEP = 0,
-	EVENT_KERNEL_WAKEUP,
-
-	/*
-	 * !!! I M P O R T A N T !!!
-	 * Kernel events can be only published by the kernel. If you are not
-	 * the EventOS class, just use it for subscription!
-	 */
-
-	/*System events*/
-	EVENT_SYS_TICK = 10,
-	EVENT_SYS_USB,
-	EVENT_SYS_ETHERNET,
-	EVENT_SYS_ERROR,
-	EVENT_SYS_WARNING,
-	EVENT_SYS_SYSTICK,
-	EVENT_SYS_UART,
-
-	/*Application events*/
-	EVENT_APP_LIGHT,
-	EVENT_APP_TEMPERATURE,
-
-	EVENT_TYPE_UNKNOWN,
-	/*Must be the last one*/
-	EVENT_TYPE_LAST
-}tenuEventType;
-
 #define EVENT_RUNTIME_EVENTS	10
 
-#define EVENT_TOTAL_EVENTS     	( EVENT_TYPE_LAST + EVENT_RUNTIME_EVENTS )
+#define EVENT_TOTAL_EVENTS     	( EVENT_RUNTIME_EVENTS )
 
-#define EVENT_NAME_MAX_LEN		10
+#define EVENT_NAME_MAX_LEN		20
 
 typedef enum enu_Priorities
 {
