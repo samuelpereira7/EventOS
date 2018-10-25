@@ -45,16 +45,18 @@ void vList_initialize( xList* pxList )
 	pxList->uxNumberOfNodes = 0;
 }
 
-void vList_deinitialize( xList* pxList )
+portCHAR vList_deinitialize( xList* pxList )
 {
 	if( pxList == NULL ) return;
-
+	portCHAR i = pxList->uxNumberOfNodes;
 	while( pxList->uxNumberOfNodes > 0 )
 	{
 		vList_remove( pxList->xListSentinel.pxNext );
 	}
 
 	pxList = NULL;
+
+	return i;
 }
 
 void vList_initializeNode( xListNode* pxNode )

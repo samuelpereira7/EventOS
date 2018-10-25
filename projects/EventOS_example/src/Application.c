@@ -36,10 +36,11 @@ void Application_lightCallback( pvEventHandle EventType, char* EventName, void* 
 void Application_temperatureCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
 volatile portULONG msTicks; // counter for 1ms Applications
-pvEventHandle temperatureEventHandler;
-pvEventHandle uartEventHandler;
-pvEventHandle lightEventHandler;
-pvEventHandle logEventHandler;
+volatile portULONG ulPressedTime;
+pvEventHandle temperatureEventHandler = NULL;
+pvEventHandle uartEventHandler = NULL;
+pvEventHandle lightEventHandler = NULL;
+pvEventHandle logEventHandler = NULL;
 
 void SysTick_Handler(void)
 {
@@ -77,6 +78,7 @@ void Application_initI2C(void)
 void Application_initButton() {
 	GPIO_SetDir(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE, PIN_DEFINITION_BUTTON_DIR);
 	GPIO_IntCmd(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE, 1);
+	GPIO_IntCmd(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE, 0);
 	NVIC_EnableIRQ(EINT3_IRQn);
 }
 
@@ -108,11 +110,33 @@ void EINT3_IRQHandler(void)
 {
 
 	if(GPIO_GetIntStatus(PIN_DEFINITION_BUTTON_PORT, PIN_DEFINITION_BUTTON_BIT_VALUE, 1)) {
-		xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Button Pressed!", 22);
-		xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Publishing new event: Temperature HIGH", 45);
-		xEvent_publish(temperatureEventHandler, EVENT_PRIORITY_LOW, NULL, 0);
-		xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Publishing new event: Light", 33);
-		xEvent_publish(lightEventHandler, EVENT_PRIORITY_HIGH, NULL, 0);
+		ulPressedTime = Application_getMsTicks();
+	}
+	else if(GPIO_GetIntStatus(PIN_DEFINITION_BUTTON_PORT, PIN_DEFINITION_BUTTON_BIT_VALUE, 0)) {
+		portULONG ulReleaseTime = Application_getMsTicks();
+		portULONG ulTimeStamp = ulReleaseTime - ulPressedTime;
+
+		if( ulTimeStamp >= 5000 && ulTimeStamp < 10000 ) {
+			if( lightEventHandler != NULL ) {
+				xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[SYS] Deleting Light event", 26 );
+				lightEventHandler = uxEvent_deleteEvent( lightEventHandler );
+			}
+		}
+		else if( ulTimeStamp >= 10000 ) {
+			if( lightEventHandler == NULL ) {
+				xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[SYS] Creating Light event", 26 );
+				lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
+				xEvent_subscribe(Application_lightCallback, lightEventHandler, NULL);
+			}
+		}
+		else {
+			xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Button Pressed!", 22 );
+			xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Publishing new event: Temperature HIGH", 45 );
+			xEvent_publish( temperatureEventHandler, EVENT_PRIORITY_LOW, NULL, 0 );
+			xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Publishing new event: Light", 34 );
+			xEvent_publish( lightEventHandler, EVENT_PRIORITY_HIGH, NULL, 0 );
+		}
+
 	}
 	GPIO_ClearInt(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE);
 
@@ -130,12 +154,12 @@ void Application_new( void )
 
 	logEventHandler = uxEvent_createEvent((portCHAR*)"Log", strlen((const char *)"log"));
 	temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
-	lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
+//	lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
 	uartEventHandler = uxEvent_createEvent((portCHAR*)"Uart", strlen((const char *)"Uart"));
 
 	xEvent_subscribe(Application_logCallback, logEventHandler, NULL);
 	xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler, NULL);
-	xEvent_subscribe(Application_lightCallback, lightEventHandler, NULL);
+//	xEvent_subscribe(Application_lightCallback, lightEventHandler, NULL);
 	xEvent_subscribe(Application_uartCallback, uartEventHandler, NULL);
 
 	led2_on();
@@ -172,8 +196,8 @@ void Application_temperatureCallback( pvEventHandle EventType, char* EventName, 
 
 		lMyMsgLen = sprintf(pcMyMsg, "[Temp] %lf C", temp/10.0);
 
-		xEvent_publish(uartEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen);
-		xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen);
+		xEvent_publish(uartEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen+1);
+		xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen+1);
 	}
 }
 
@@ -185,8 +209,8 @@ void Application_lightCallback( pvEventHandle EventType, char* EventName, void* 
 
 	lMyMsgLen = sprintf(pcMyMsg, "[Light] %d L", light);
 
-	xEvent_publish(uartEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen);
-	xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen);
+	xEvent_publish(uartEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen+1);
+	xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen+1);
 }
 
 void Application_uartCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {

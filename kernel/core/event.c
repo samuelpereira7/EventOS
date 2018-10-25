@@ -54,8 +54,6 @@ typedef struct evtEventControlBlock
 	xListNode				xEventListNode;							/*< List node used to place the event in the list. */
 	portBASE_TYPE			xEventPriority;							/*< The priority of the event where 0 is the lowest priority. */
 	pvEventHandle			pvEventType;
-	signed char				pcEventName[configMAX_EVENT_NAME_LEN];	/*< Descriptive name given to the event when created.  Facilitates debugging only. */
-
 	xList*					pxSubscriberList;						/*< Pointer to the list of event handlers >*/
 	void*					pvPayload;
 	portBASE_TYPE			xPayloadSize;
@@ -156,8 +154,6 @@ __PRIVATE_ void prvEvent_initializeSubscriberLists( pvEventHandle pvRoot )
 	 */
 	if(pvRoot == NULL) return;
 	vList_initialize( ( xList* ) &( ( (ttag_EventType*) ( ( CAST_EVENT_TYPE )pvRoot )->pvPayload )->pxSubscriberList ) );
-	prvEvent_initializeSubscriberLists((pvEventHandle)((CAST_EVENT_TYPE)pvRoot)->ptagLeft);
-	prvEvent_initializeSubscriberLists((pvEventHandle)((CAST_EVENT_TYPE)pvRoot)->ptagRight);
 
 }
 
@@ -345,14 +341,18 @@ pvEventHandle uxEvent_deleteEvent( pvEventHandle pvNodeHandler )
 {
 	if( pvNodeHandler == NULL ) return pdFAIL;
 
+	void* pvAux = NULL;
+
 	portDISABLE_INTERRUPTS();
 	{
-		((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload = Event_DeallocateEventType((ttag_EventType*)((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload);
-		ptagRoot = (pvEventHandle)AVLTree_removeSpecificNode((CAST_EVENT_TYPE)ptagRoot, (CAST_EVENT_TYPE)pvNodeHandler);
+		pvAux = ((CAST_EVENT_TYPE)pvNodeHandler)->pvPayload;
+		ptagRoot = (pvEventHandle)AVLTree_removeSpecificNode((CAST_EVENT_TYPE)ptagRoot, &pvNodeHandler);
+		pvAux = Event_DeallocateEventType((ttag_EventType*)(pvAux));
+		uxNumberOfEventsCreated--;
 	}
 	portENABLE_INTERRUPTS();
 
-	return ptagRoot;
+	return pvNodeHandler;
 }
 
 /**
@@ -408,14 +408,15 @@ signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEv
 
 		portDISABLE_INTERRUPTS();
 		{
-			/*Inserting new subscriber in the respective event list*/
-			uxCurrentNumberOfSubscribers++;
+			if ( ( (ttag_EventType*) ( ( CAST_EVENT_TYPE )pvEventType )->pvPayload ) != NULL )
+				/*Inserting new subscriber in the respective event list*/
+				( ( (ttag_EventType*) ( ( CAST_EVENT_TYPE )pvEventType )->pvPayload )->pxSubscriberList ).uxNumberOfNodes++;
 
-			if( uxCurrentNumberOfSubscribers == ( portUBASE_TYPE ) 1 )
+			if( ( ( (ttag_EventType*) ( ( CAST_EVENT_TYPE )pvEventType )->pvPayload )->pxSubscriberList ).uxNumberOfNodes == ( portUBASE_TYPE ) 1 )
 			{
 				/* This is the first subscriber to be created so do the preliminary
 				required initialization. */
-				prvEvent_initializeSubscriberLists(ptagRoot);
+				prvEvent_initializeSubscriberLists(pvEventType);
 			}
 			prvEvent_addSubscriberToList( pxNewSubscriber );
 
@@ -662,7 +663,6 @@ __PRIVATE_ ttag_EventType* Event_DeallocateEventType( ttag_EventType* ptagEvent 
 
 	//TODO Implement Dealocater function to xList
 	vList_deinitialize(&ptagEvent->pxSubscriberList);
-
 	vPortFree( ptagEvent->pcEventName );
 	ptagEvent->pcEventName = NULL;
 
