@@ -35,7 +35,7 @@ void Application_uartCallback( pvEventHandle EventType, char* EventName, void* p
 void Application_lightCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 void Application_temperatureCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
-volatile portULONG msTicks; // counter for 1ms Applications
+volatile portULONG msTicks=0; // counter for 1ms Applications
 volatile portULONG ulPressedTime;
 pvEventHandle temperatureEventHandler = NULL;
 pvEventHandle uartEventHandler = NULL;
@@ -49,9 +49,10 @@ void SysTick_Handler(void)
 	if(msTicks%500 == 0) {
 		led2_invert();
 	}
-	if(msTicks%10000 == 0) {
-		xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Publishing new event: Temperature LOW", 44);
-		xEvent_publish(temperatureEventHandler, EVENT_PRIORITY_LOW, NULL, 0);
+	if(msTicks%1000 == 0) {
+		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event: Light LOW" );
+		uint32_t light = light_read();
+		xEvent_publish(lightEventHandler, EVENT_PRIORITY_LOW, &light, sizeof(light));
 	}
 }
 
@@ -117,24 +118,26 @@ void EINT3_IRQHandler(void)
 		portULONG ulTimeStamp = ulReleaseTime - ulPressedTime;
 
 		if( ulTimeStamp >= 5000 && ulTimeStamp < 10000 ) {
-			if( lightEventHandler != NULL ) {
-				xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[SYS] Deleting Light event", 26 );
-				lightEventHandler = uxEvent_deleteEvent( lightEventHandler );
+			if( temperatureEventHandler != NULL ) {
+				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[SYS] Deleting Temperature event" );
+				temperatureEventHandler = uxEvent_deleteEvent( temperatureEventHandler );
 			}
 		}
 		else if( ulTimeStamp >= 10000 ) {
-			if( lightEventHandler == NULL ) {
-				xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[SYS] Creating Light event", 26 );
-				lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
-				xEvent_subscribe(Application_lightCallback, lightEventHandler, NULL);
+			if( temperatureEventHandler == NULL ) {
+				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[SYS] Creating Temperature event" );
+				temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
+				xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler, NULL);
 			}
 		}
 		else {
-			xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Button Pressed!", 22 );
-			xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Publishing new event: Temperature HIGH", 45 );
-			xEvent_publish( temperatureEventHandler, EVENT_PRIORITY_LOW, NULL, 0 );
-			xEvent_publish( logEventHandler, EVENT_PRIORITY_MEDIUM, "[app] Publishing new event: Light", 34 );
-			xEvent_publish( lightEventHandler, EVENT_PRIORITY_HIGH, NULL, 0 );
+			uint32_t light = light_read();
+			uint32_t temp  = temp_read();
+			Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Button Pressed!" );
+			Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event: Temperature" );
+			xEvent_publish( temperatureEventHandler, EVENT_PRIORITY_HIGH, &temp, sizeof(temp) );
+			Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event: Light HIGH" );
+			xEvent_publish( lightEventHandler, EVENT_PRIORITY_HIGH, &light, sizeof(light) );
 		}
 
 	}
@@ -152,15 +155,9 @@ void Application_new( void )
 	light_enable();
 	temp_init(Application_getMsTicks);
 
-	logEventHandler = uxEvent_createEvent((portCHAR*)"Log", strlen((const char *)"log"));
-	temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
-//	lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
-	uartEventHandler = uxEvent_createEvent((portCHAR*)"Uart", strlen((const char *)"Uart"));
+	lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
 
-	xEvent_subscribe(Application_logCallback, logEventHandler, NULL);
-	xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler, NULL);
-//	xEvent_subscribe(Application_lightCallback, lightEventHandler, NULL);
-	xEvent_subscribe(Application_uartCallback, uartEventHandler, NULL);
+	xEvent_subscribe(Application_lightCallback, lightEventHandler, NULL);
 
 	led2_on();
 
@@ -183,38 +180,26 @@ void Application_delete( void )
 
 }
 
-void Application_logCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {
-	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, (const char*)pvPayload);
-}
-
 void Application_temperatureCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {
-	uint32_t temp = temp_read();
+	portCHAR pcMyMsg[30];
+	portLONG lMyMsgLen = 0;
+	uint32_t* temp = (uint32_t*)pvPayload;
 
-	if(temp > 0) {
-		portCHAR pcMyMsg[30];
-		portLONG lMyMsgLen = 0;
+	lMyMsgLen = sprintf(pcMyMsg, "[Temp] %lf C", (*temp)/10.0);
 
-		lMyMsgLen = sprintf(pcMyMsg, "[Temp] %lf C", temp/10.0);
-
-		xEvent_publish(uartEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen+1);
-		xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen+1);
-	}
+	UART_SendString(LPC_UART3, (uint8_t*)pcMyMsg);
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, pcMyMsg);
 }
 
 void Application_lightCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {
-	int32_t light = light_read();
-
 	portCHAR pcMyMsg[30];
 	portLONG lMyMsgLen = 0;
+	uint32_t* light = ((uint32_t*)pvPayload);
 
-	lMyMsgLen = sprintf(pcMyMsg, "[Light] %d L", light);
+	lMyMsgLen = sprintf(pcMyMsg, "[Light] %d L", *light);
 
-	xEvent_publish(uartEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen+1);
-	xEvent_publish(logEventHandler, EVENT_PRIORITY_MEDIUM, pcMyMsg, lMyMsgLen+1);
-}
-
-void Application_uartCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {
-	UART_SendString(LPC_UART3, (uint8_t*)pvPayload);
+	UART_SendString(LPC_UART3, pcMyMsg);
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, pcMyMsg);
 }
 
 portULONG Application_getMsTicks(void)

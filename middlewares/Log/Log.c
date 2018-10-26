@@ -154,8 +154,8 @@ void  Log_print(tenu_LogFacility enuFacility, tenu_LogSeverity enuSeverity, cons
 		va_start( arguments, cString );
 
 		ulMsgSize = snprintf((char*)cMessage, LOG_PACKET_SIZE,"<%d> ", ((enuFacility*8) + enuSeverity));
-		ulMsgSize += Log_getDateTime((char*)&cMessage[ulMsgSize], ulMsgSize);
-		ulMsgSize += Log_getHostIp((char*)&cMessage[ulMsgSize], ulMsgSize);
+//		ulMsgSize += Log_getDateTime((char*)&cMessage[ulMsgSize], ulMsgSize);
+//		ulMsgSize += Log_getHostIp((char*)&cMessage[ulMsgSize], ulMsgSize);
 		ulMsgSize += vsnprintf((char*)&cMessage[ulMsgSize], (LOG_PACKET_SIZE-ulMsgSize), (char*)cString, arguments);
 
 		#ifdef LOG_CONSOLE
