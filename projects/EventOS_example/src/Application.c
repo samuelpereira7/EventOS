@@ -49,7 +49,8 @@ void SysTick_Handler(void)
 	if(msTicks%500 == 0) {
 		led2_invert();
 	}
-	if(msTicks%1000 == 0) {
+	if(msTicks%10000 == 0)
+	{
 		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event: Light LOW" );
 		uint32_t light = light_read();
 		xEvent_publish(lightEventHandler, EVENT_PRIORITY_LOW, &light, sizeof(light));
@@ -81,6 +82,7 @@ void Application_initButton() {
 	GPIO_IntCmd(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE, 1);
 	GPIO_IntCmd(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE, 0);
 	NVIC_EnableIRQ(EINT3_IRQn);
+	NVIC_SetPriority(EINT3_IRQn, 1);
 }
 
 void Application_initUart() {
@@ -171,6 +173,10 @@ void Application_initSysTick( void )
 	if (SysTick_Config(SystemCoreClock/1000))
 	{
 	    while (1);  // Capture error
+	}
+	else
+	{
+		NVIC_SetPriority(SysTick_IRQn, 0);
 	}
 	return;
 }
