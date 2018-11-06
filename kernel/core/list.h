@@ -150,7 +150,7 @@ void vList_initialize( xList* pxList );
     @author samuelp
     @date   24/09/2018
 */
-void vList_deinitialize( xList* pxList );
+portCHAR vList_deinitialize( xList* pxList );
 
 void vList_initializeNode( xListNode* pxNode );
 void vList_insertHead( xList* pxList, xListNode* pxNewListNode );

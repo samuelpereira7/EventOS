@@ -12,53 +12,50 @@
 
 #include "leds.h"
 #include "light.h"
+#include "temp.h"
 #include "lpc17xx_i2c.h"
+#include "lpc17xx_gpio.h"
+#include "lpc17xx_uart.h"
 #include "lpc17xx_pinsel.h"
 
 
 /*********************************************************
     private operations.
 *********************************************************/
+#define PIN_DEFINITION_BUTTON_PORT			0
+#define PIN_DEFINITION_BUTTON_BIT_VALUE		4
+#define PIN_DEFINITION_BUTTON_DIR			0
 
 void Application_init( void );
 void Application_initI2C( void );
 void Application_initSysTick( void );
-void Application_receiveNewEvent( pvEventHandle pvEventHandler, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
-void Application_receiveLight( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
-void Application_createdEventCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
-void Application_genericCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+portULONG Application_getMsTicks( void );
+void Application_logCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_uartCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_lightCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
+void Application_temperatureCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize );
 
-volatile portULONG msTicks; // counter for 1ms Applications
-pvEventHandle event[15];
+volatile portULONG msTicks=0; // counter for 1ms Applications
+volatile portULONG ulPressedTime;
+pvEventHandle temperatureEventHandler = NULL;
+pvEventHandle uartEventHandler = NULL;
+pvEventHandle lightEventHandler = NULL;
+pvEventHandle logEventHandler = NULL;
 
 void SysTick_Handler(void)
 {
 	msTicks++;
 
-	portULONG xVar = msTicks;
-
-	//Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"Handling new Application interrupt\n");
-
-	if( msTicks % 1000 == 0 )
-	{
-		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: TICK");
-		xEvent_publish(event[0], EVENT_PRIORITY_HIGH, NULL, 0);
-		xEvent_publish(event[1], EVENT_PRIORITY_LOW, NULL, 0);
+	if(msTicks%500 == 0) {
+		led2_invert();
 	}
-	if( msTicks % 5000 == 0 )
+	if(msTicks%10000 == 0)
 	{
-		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: ETHERNET");
-		xEvent_publish(event[2], EVENT_PRIORITY_MEDIUM, NULL, 0);
-	}
-	if( msTicks % 10000 == 0 )
-	{
-		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Publishing new event: Application");
-		xEvent_publish(event[4], EVENT_PRIORITY_MEDIUM, &xVar, sizeof(xVar));
-	    msTicks = 0;
+		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Systick: Light\n" );
+		uint32_t light = light_read();
+		xEvent_publish(lightEventHandler, EVENT_PRIORITY_LOW, &light, sizeof(light));
 	}
 }
-
-
 
 void Application_initI2C(void)
 {
@@ -77,43 +74,93 @@ void Application_initI2C(void)
 
 	/* Enable I2C1 operation */
 	I2C_Cmd(LPC_I2C2, ENABLE);
+
 }
 
+void Application_initButton() {
+	GPIO_SetDir(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE, PIN_DEFINITION_BUTTON_DIR);
+	GPIO_IntCmd(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE, 1);
+	GPIO_IntCmd(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE, 0);
+	NVIC_EnableIRQ(EINT3_IRQn);
+	NVIC_SetPriority(EINT3_IRQn, 1);
+}
+
+void Application_initUart() {
+	PINSEL_CFG_Type PinCfg;
+	UART_CFG_Type uartCfg;
+
+	/* Initialize UART3 pin connect */
+	PinCfg.Funcnum = 2;//2;
+	PinCfg.Pinnum = 0;//0;
+	PinCfg.Portnum = 0;//0;
+	PINSEL_ConfigPin(&PinCfg);
+
+	PinCfg.Funcnum = 2;//2;
+	PinCfg.Pinnum = 1;//0;
+	PinCfg.Portnum = 0;//0;
+	PINSEL_ConfigPin(&PinCfg);
+
+	uartCfg.Baud_rate 	= 115200;
+	uartCfg.Databits	= UART_DATABIT_8;
+	uartCfg.Parity 		= UART_PARITY_NONE;
+	uartCfg.Stopbits 	= UART_STOPBIT_1;
+
+	UART_Init(LPC_UART3, &uartCfg);
+	UART_TxCmd(LPC_UART3, ENABLE);
+}
+
+void EINT3_IRQHandler(void)
+{
+
+	if(GPIO_GetIntStatus(PIN_DEFINITION_BUTTON_PORT, PIN_DEFINITION_BUTTON_BIT_VALUE, 1)) {
+		ulPressedTime = Application_getMsTicks();
+		uint32_t light = light_read();
+		uint32_t temp  = temp_read();
+		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Button: Temp\n" );
+		xEvent_publish( temperatureEventHandler, EVENT_PRIORITY_HIGH, &temp, sizeof(temp) );
+		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Button: Light\n" );
+		xEvent_publish( lightEventHandler, EVENT_PRIORITY_HIGH, &light, sizeof(light) );
+	}
+	else if(GPIO_GetIntStatus(PIN_DEFINITION_BUTTON_PORT, PIN_DEFINITION_BUTTON_BIT_VALUE, 0)) {
+		portULONG ulReleaseTime = Application_getMsTicks();
+		portULONG ulTimeStamp = ulReleaseTime - ulPressedTime;
+
+		if( ulTimeStamp >= 5000 ) {
+			if( temperatureEventHandler != NULL ) {
+				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Deleting new event from Button: Temp\n" );
+				uxEvent_deleteEvent( temperatureEventHandler );
+				temperatureEventHandler = NULL;
+			}
+			else {
+				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from Button: Temp\n" );
+				temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
+				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from Button: Temp\n" );
+				xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler);
+			}
+		}
+	}
+	GPIO_ClearInt(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE);
+
+}
 
 void Application_new( void )
 {
-	portCHAR evt[20];
-	portCHAR i = 0;
-
 	Application_initI2C();
+	Application_initUart();
+	Application_initButton();
 
 	led2_init();
 	light_enable();
+	temp_init(Application_getMsTicks);
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from init: Light\n" );
+	lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing on event from init: Light\n" );
+	xEvent_subscribe(Application_lightCallback, lightEventHandler);
 
-	for(;i<10;i++) {
-		sprintf((char*)evt, (const char*)"myevent%d", i+1);
-		event[i] = uxEvent_createEvent( evt, strlen( (const char *)evt ) );
-	}
-
-	if(event[0] != NULL)
-		xEvent_subscribe( Application_receiveNewEvent, event[0], NULL );
-	if(event[1] != NULL)
-		xEvent_subscribe( Application_receiveNewEvent, event[1], NULL );
-	if(event[2] != NULL)
-		xEvent_subscribe( Application_receiveNewEvent, event[2], NULL );
-	if(event[3] != NULL)
-		xEvent_subscribe( Application_receiveLight, event[3], NULL );
-	if(event[4] != NULL)
-		xEvent_subscribe( Application_createdEventCallback, event[4], NULL );
-
-	for(i=5;i<10;i++) {
-		if(event[i] != NULL)
-			xEvent_subscribe(Application_genericCallback, event[i], NULL);
-	}
-
-	event[1] = NULL;
-
-	event[1] = uxEvent_getEventHandler(("myevent2"), strlen("myevent2"));
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from Button: Temp\n" );
+	temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from Button: Temp\n" );
+	xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler);
 
 	led2_on();
 
@@ -128,6 +175,10 @@ void Application_initSysTick( void )
 	{
 	    while (1);  // Capture error
 	}
+	else
+	{
+		NVIC_SetPriority(SysTick_IRQn, 0);
+	}
 	return;
 }
 
@@ -136,55 +187,26 @@ void Application_delete( void )
 
 }
 
-void Application_receiveLight(pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize)
-{
-	int32_t* iLight = (int32_t*)pvPayload;
+void Application_temperatureCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {
+	portCHAR pcMyMsg[30];
+	portLONG lMyMsgLen = 0;
+	uint32_t* temp = (uint32_t*)pvPayload;
 
-	Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Received light: %d", *iLight);
+	lMyMsgLen = sprintf(pcMyMsg, "[Temp]%.2lf*OK\n", (*temp)/10.0);
+
+	UART_SendString(LPC_UART3, (uint8_t*)pcMyMsg);
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, pcMyMsg);
 }
 
-void Application_receiveNewEvent( pvEventHandle pvEventHandler, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE XPayloadSize )
-{
-	portBASE_TYPE xLight;
+void Application_lightCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {
+	portCHAR pcMyMsg[30];
+	portLONG lMyMsgLen = 0;
+	uint32_t* light = ((uint32_t*)pvPayload);
 
-	if( pvEventHandler == event[0] ) {
-		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Systick)");
-		xLight = light_read();
-		xEvent_publish( event[3], EVENT_PRIORITY_MEDIUM, &xLight, sizeof( xLight ) );
-		led2_invert();
-	}
-	else if( pvEventHandler == event[1] ) {
-		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Tick)");
-	}
-	else if( pvEventHandler == event[2] ) {
-		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] Receiving new event from EventOS (Ethernet)");
-	}
-	else {
-		Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_ERROR,"[app] Event not expected");
-	}
-}
+	lMyMsgLen = sprintf(pcMyMsg, "[Light]%d*OK\n", *light);
 
-void Application_createdEventCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize )
-{
-	int32_t* iValue = ( int32_t* ) pvPayload;
-	int32_t iPosValue = 0;
-
-	if(EventName != NULL)
-		iPosValue = (rand())%10;
-
-	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] xxxx Received data from created event: %d; Event name: [%s]", *iValue, EventName );
-
-	if( iPosValue > 4 ) {
-		if(event[iPosValue] != NULL) {
-			xEvent_publish(event[iPosValue], EVENT_PRIORITY_LOW, (void*)iValue, sizeof(*iValue));
-		}
-	}
-}
-
-void Application_genericCallback( pvEventHandle EventType, char* EventName, void* pvHandler, void* pvPayload, portBASE_TYPE xPayloadSize ) {
-	int32_t* iValue = ( int32_t* ) pvPayload;
-
-	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL,"[app] GENERIC FUNCTION Received data from created event: %d; Event name: [%s]", *iValue, EventName );
+	UART_SendString(LPC_UART3, pcMyMsg);
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, pcMyMsg);
 }
 
 portULONG Application_getMsTicks(void)
