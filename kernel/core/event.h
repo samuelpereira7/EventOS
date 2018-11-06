@@ -67,7 +67,7 @@ typedef void ( *pdEVENT_HANDLER_FUNCTION )( pvEventHandle, char*, void*, void*, 
 *********************************************************/
 void					vEvent_initSystem( void );
 void 					vEvent_startScheduler( void );
-pvEventHandle			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
+portBASE_TYPE			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength, pvEventHandle *pvHandler );
 portBASE_TYPE			uxEvent_deleteEvent( pvEventHandle pvNodeHandler );
 pvEventHandle			uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
 signed portBASE_TYPE 	xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEventHandle pvEventType );

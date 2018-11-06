@@ -298,14 +298,14 @@ void vEvent_startScheduler( void )
 	@author samuelpereira7/jponeticarvalho
 	@date   18/09/2018
 */
-pvEventHandle uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength )
+portBASE_TYPE uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength, pvEventHandle *pvHandelr )
 {
 	if( pcEventName == NULL ) return pdFAIL;
 	if( uxNameLength > EVENT_NAME_MAX_LEN ) return pdFAIL;
 	if( uxNumberOfEventsCreated > EVENT_TOTAL_EVENTS) return pdFAIL;
+	if( uxEvent_getEventHandler(pcEventName, uxNameLength) != NULL ) return pdFAIL;
 
-	ttag_EventType* ptagEvent = NULL;
-	CAST_EVENT_TYPE	pvNewEventHandler = NULL;
+	ttag_EventType* ptagEvent = NULL;;
 
 	portDISABLE_INTERRUPTS();
 	{
@@ -314,7 +314,7 @@ pvEventHandle uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameL
 
 		if(ptagEvent != NULL) {
 			/* saving the event into avl tree */
-			ptagRoot = (pvEventHandle)AVLTree_insertNode((CAST_EVENT_TYPE)ptagRoot, (void*)ptagEvent, &(pvNewEventHandler));
+			ptagRoot = (pvEventHandle)AVLTree_insertNode((CAST_EVENT_TYPE)ptagRoot, (void*)ptagEvent, pvHandelr);
 			uxNumberOfEventsCreated++;
 		}
 		else
@@ -324,7 +324,7 @@ pvEventHandle uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameL
 	}
 	portENABLE_INTERRUPTS();
 
-	return pvNewEventHandler;
+	return pdPASS;
 }
 
 /**

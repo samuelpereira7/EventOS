@@ -133,7 +133,7 @@ void EINT3_IRQHandler(void)
 			}
 			else {
 				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from Button: Temp\n" );
-				temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
+				uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"), &temperatureEventHandler);
 				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from Button: Temp\n" );
 				xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler);
 			}
@@ -153,12 +153,17 @@ void Application_new( void )
 	light_enable();
 	temp_init(Application_getMsTicks);
 	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from init: Light\n" );
-	lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
+	uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"), &lightEventHandler);
 	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing on event from init: Light\n" );
 	xEvent_subscribe(Application_lightCallback, lightEventHandler);
 
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from init: Light\n" );
+	if( uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"), &lightEventHandler) == pdFAIL ) {
+		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Error on creating the Event: Light\n" );
+	}
+
 	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from Button: Temp\n" );
-	temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
+	uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"), &temperatureEventHandler);
 	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from Button: Temp\n" );
 	xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler);
 
