@@ -159,7 +159,7 @@ void  Log_print(tenu_LogFacility enuFacility, tenu_LogSeverity enuSeverity, cons
 		ulMsgSize += vsnprintf((char*)&cMessage[ulMsgSize], (LOG_PACKET_SIZE-ulMsgSize), (char*)cString, arguments);
 
 		#ifdef LOG_CONSOLE
-			snprintf((char*)&cMessage[ulMsgSize], (LOG_PACKET_SIZE - ulMsgSize),(char*)"\n");
+//			snprintf((char*)&cMessage[ulMsgSize], (LOG_PACKET_SIZE - ulMsgSize),(char*)"\n");
 			printf((char*)cMessage);
 		#else
 

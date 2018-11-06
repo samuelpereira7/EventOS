@@ -51,7 +51,7 @@ void SysTick_Handler(void)
 	}
 	if(msTicks%10000 == 0)
 	{
-		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event: Light LOW" );
+		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Systick: Light\n" );
 		uint32_t light = light_read();
 		xEvent_publish(lightEventHandler, EVENT_PRIORITY_LOW, &light, sizeof(light));
 	}
@@ -114,34 +114,30 @@ void EINT3_IRQHandler(void)
 
 	if(GPIO_GetIntStatus(PIN_DEFINITION_BUTTON_PORT, PIN_DEFINITION_BUTTON_BIT_VALUE, 1)) {
 		ulPressedTime = Application_getMsTicks();
+		uint32_t light = light_read();
+		uint32_t temp  = temp_read();
+		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Button: Temp\n" );
+		xEvent_publish( temperatureEventHandler, EVENT_PRIORITY_HIGH, &temp, sizeof(temp) );
+		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Button: Light\n" );
+		xEvent_publish( lightEventHandler, EVENT_PRIORITY_HIGH, &light, sizeof(light) );
 	}
 	else if(GPIO_GetIntStatus(PIN_DEFINITION_BUTTON_PORT, PIN_DEFINITION_BUTTON_BIT_VALUE, 0)) {
 		portULONG ulReleaseTime = Application_getMsTicks();
 		portULONG ulTimeStamp = ulReleaseTime - ulPressedTime;
 
-		if( ulTimeStamp >= 5000 && ulTimeStamp < 10000 ) {
+		if( ulTimeStamp >= 5000 ) {
 			if( temperatureEventHandler != NULL ) {
-				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[SYS] Deleting Temperature event" );
-				temperatureEventHandler = uxEvent_deleteEvent( temperatureEventHandler );
+				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Deleting new event from Button: Temp\n" );
+				uxEvent_deleteEvent( temperatureEventHandler );
+				temperatureEventHandler = NULL;
 			}
-		}
-		else if( ulTimeStamp >= 10000 ) {
-			if( temperatureEventHandler == NULL ) {
-				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[SYS] Creating Temperature event" );
+			else {
+				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from Button: Temp\n" );
 				temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
-				xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler, NULL);
+				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from Button: Temp\n" );
+				xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler);
 			}
 		}
-		else {
-			uint32_t light = light_read();
-			uint32_t temp  = temp_read();
-			Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Button Pressed!" );
-			Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event: Temperature" );
-			xEvent_publish( temperatureEventHandler, EVENT_PRIORITY_HIGH, &temp, sizeof(temp) );
-			Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event: Light HIGH" );
-			xEvent_publish( lightEventHandler, EVENT_PRIORITY_HIGH, &light, sizeof(light) );
-		}
-
 	}
 	GPIO_ClearInt(PIN_DEFINITION_BUTTON_PORT, 1<<PIN_DEFINITION_BUTTON_BIT_VALUE);
 
@@ -156,10 +152,15 @@ void Application_new( void )
 	led2_init();
 	light_enable();
 	temp_init(Application_getMsTicks);
-
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from init: Light\n" );
 	lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing on event from init: Light\n" );
+	xEvent_subscribe(Application_lightCallback, lightEventHandler);
 
-	xEvent_subscribe(Application_lightCallback, lightEventHandler, NULL);
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from Button: Temp\n" );
+	temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from Button: Temp\n" );
+	xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler);
 
 	led2_on();
 
@@ -191,7 +192,7 @@ void Application_temperatureCallback( pvEventHandle EventType, char* EventName, 
 	portLONG lMyMsgLen = 0;
 	uint32_t* temp = (uint32_t*)pvPayload;
 
-	lMyMsgLen = sprintf(pcMyMsg, "[Temp] %lf C", (*temp)/10.0);
+	lMyMsgLen = sprintf(pcMyMsg, "[Temp]%.2lf*OK\n", (*temp)/10.0);
 
 	UART_SendString(LPC_UART3, (uint8_t*)pcMyMsg);
 	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, pcMyMsg);
@@ -202,7 +203,7 @@ void Application_lightCallback( pvEventHandle EventType, char* EventName, void* 
 	portLONG lMyMsgLen = 0;
 	uint32_t* light = ((uint32_t*)pvPayload);
 
-	lMyMsgLen = sprintf(pcMyMsg, "[Light] %d L", *light);
+	lMyMsgLen = sprintf(pcMyMsg, "[Light]%d*OK\n", *light);
 
 	UART_SendString(LPC_UART3, pcMyMsg);
 	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, pcMyMsg);

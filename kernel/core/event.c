@@ -114,7 +114,7 @@ __PRIVATE_ volatile portUBASE_TYPE uxNumberOfEventsCreated =		( portUBASE_TYPE )
 __PRIVATE_ void 			prvEvent_initializeEventLists( void );
 __PRIVATE_ void 			prvEvent_initializeSubscriberLists( pvEventHandle pxRoot );
 __PRIVATE_ ttag_EventType* 	Event_AllocateEventType( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
-__PRIVATE_ void 			prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, pvEventHandle pxEventType, void* pvSubscriber );
+__PRIVATE_ void 			prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, pvEventHandle pxEventType );
 __PRIVATE_ void 			prvEvent_initializeECBVariables( evtECB* pxECB, pvEventHandle pvEventType, portUBASE_TYPE uxEventPriority );
 __PRIVATE_ void 			prvEvent_incrementProcessStamp( void );
 __PRIVATE_ portUBASE_TYPE 	prxEvent_getProcessStamp( void );
@@ -190,7 +190,7 @@ __PRIVATE_ ttag_EventType* Event_AllocateEventType( portCHAR* pcEventName, portU
 	return ptagAlocatedEvent;
 }
 
-__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, pvEventHandle pvEventType, void* pvSubscriber )
+__PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_FUNCTION pFunction, pvEventHandle pvEventType )
 {
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
@@ -199,7 +199,6 @@ __PRIVATE_ void prvEvent_initializeSCBVariables( evtSCB* pxSCB, pdEVENT_HANDLER_
 
 	pxSCB->pvEventType = pvEventType;
 	pxSCB->pdEventHandlerFunction = pFunction;
-	pxSCB->pvHandler = pvSubscriber;
 
 	vList_initializeNode( &( pxSCB->xSubscriberListNode ) );
 
@@ -337,7 +336,7 @@ pvEventHandle uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameL
 	@author jponeticarvalho
 	@date   24/09/2018
 */
-pvEventHandle uxEvent_deleteEvent( pvEventHandle pvNodeHandler )
+portBASE_TYPE uxEvent_deleteEvent( pvEventHandle pvNodeHandler )
 {
 	if( pvNodeHandler == NULL ) return pdFAIL;
 
@@ -352,7 +351,7 @@ pvEventHandle uxEvent_deleteEvent( pvEventHandle pvNodeHandler )
 	}
 	portENABLE_INTERRUPTS();
 
-	return pvNodeHandler;
+	return pdPASS;
 }
 
 /**
@@ -393,7 +392,7 @@ pvEventHandle uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxN
     @author Edielson
     @date   15/09/2017
 */
-signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEventHandle pvEventType, void* pvSubscriber )
+signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEventHandle pvEventType )
 {
 	if( pvEventType == NULL ) return pdFALSE;
 	if( !pvFunction ) return pdFALSE;
@@ -404,7 +403,7 @@ signed portBASE_TYPE xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEv
 	if(pxNewSubscriber)
 	{
 		/*Initializing variables*/
-		prvEvent_initializeSCBVariables( pxNewSubscriber, pvFunction, pvEventType, pvSubscriber );
+		prvEvent_initializeSCBVariables( pxNewSubscriber, pvFunction, pvEventType );
 
 		portDISABLE_INTERRUPTS();
 		{

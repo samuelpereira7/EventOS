@@ -30,7 +30,7 @@ extern "C" {
  * MACROS AND DEFINITIONS
  *----------------------------------------------------------*/
 
-#define evnKERNEL_VERSION_NUMBER "V1.0.1"
+#define evnKERNEL_VERSION_NUMBER "EventOS V1.0.4\n"
 
 /**
  * event. h
@@ -68,9 +68,9 @@ typedef void ( *pdEVENT_HANDLER_FUNCTION )( pvEventHandle, char*, void*, void*, 
 void					vEvent_initSystem( void );
 void 					vEvent_startScheduler( void );
 pvEventHandle			uxEvent_createEvent( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
-pvEventHandle			uxEvent_deleteEvent( pvEventHandle pvNodeHandler );
+portBASE_TYPE			uxEvent_deleteEvent( pvEventHandle pvNodeHandler );
 pvEventHandle			uxEvent_getEventHandler( portCHAR* pcEventName, portUBASE_TYPE uxNameLength );
-signed portBASE_TYPE 	xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEventHandle pvEventType, void* pvSubscriber );
+signed portBASE_TYPE 	xEvent_subscribe( pdEVENT_HANDLER_FUNCTION pvFunction, pvEventHandle pvEventType );
 signed portBASE_TYPE	xEvent_publish( pvEventHandle pvEventType, portUBASE_TYPE uxPriority, void* pvPayload, portBASE_TYPE xPayloadSize );
 portCHAR*  				pxEvent_getVersion( void );
 
