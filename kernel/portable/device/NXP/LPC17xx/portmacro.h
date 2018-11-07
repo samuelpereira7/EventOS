@@ -42,6 +42,8 @@ extern "C" {
 #define portUDOUBLE		unsigned portDOUBLE
 #define portLONG		long
 #define portULONG		unsigned portLONG
+#define portLONGLONG	long
+#define portULONGLONG	unsigned portLONGLONG
 #define portSHORT		short
 #define portSTACK_TYPE	unsigned portLONG
 #define portBASE_TYPE   long
