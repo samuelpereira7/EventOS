@@ -135,12 +135,12 @@ ttag_treeNodePtr AVLTree_getHandler(ttag_treeNodePtr ptagRoot, void* pvPayloadSe
     @author jponeticarvalho
     @date   25/08/2018
 */
-ttag_treeNodePtr AVLTree_removeSpecificNode(ttag_treeNodePtr ptagRoot, ttag_treeNodePtr ptagNodeHandler) {
+ttag_treeNodePtr AVLTree_removeSpecificNode(ttag_treeNodePtr ptagRoot, ttag_treeNodePtr* ptagNodeHandler) {
 
 	if(ptagRoot == NULL)
 		return NULL;
 
-	if(ptagRoot == ptagNodeHandler) {
+	if(ptagRoot == *ptagNodeHandler) {
 		if( (ptagRoot->ptagLeft == NULL) || (ptagRoot->ptagRight == NULL) ) {
 			ttag_treeNodePtr ptagTemp = ptagRoot->ptagLeft ? ptagRoot->ptagLeft:ptagRoot->ptagRight;
 
@@ -150,6 +150,7 @@ ttag_treeNodePtr AVLTree_removeSpecificNode(ttag_treeNodePtr ptagRoot, ttag_tree
 			}
 			else
 				*ptagRoot = *ptagTemp;
+			(*ptagNodeHandler) = NULL;
 			AVLTree_nodeDealloc(ptagTemp);
 		}
 		else{
@@ -161,7 +162,7 @@ ttag_treeNodePtr AVLTree_removeSpecificNode(ttag_treeNodePtr ptagRoot, ttag_tree
 		}
 	}
 	else {
-		portCHAR cCompareValue = AVLTree_nodeCmp(ptagRoot->pvPayload, ptagNodeHandler->pvPayload);
+		portCHAR cCompareValue = AVLTree_nodeCmp(ptagRoot->pvPayload, (*ptagNodeHandler)->pvPayload);
 		if(cCompareValue > 0) {
 			ptagRoot->ptagLeft = AVLTree_removeSpecificNode(ptagRoot->ptagLeft, ptagNodeHandler);
 		}

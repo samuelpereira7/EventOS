@@ -55,6 +55,11 @@
 			<locationURI>PARENT-5-PROJECT_LOC/drivers/LPC17xx_HAL_Drivers/src/lpc17xx_clkpwr.c</locationURI>
 		</link>
 		<link>
+			<name>Drivers/LPC17xx_HAL_Drivers/lpc17xx_gpio.c</name>
+			<type>1</type>
+			<location>D:/JoaoDoAviao/Inatel/TCC/repositorio/EventOS/drivers/LPC17xx_HAL_Drivers/src/lpc17xx_gpio.c</location>
+		</link>
+		<link>
 			<name>Drivers/LPC17xx_HAL_Drivers/lpc17xx_i2c.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/drivers/LPC17xx_HAL_Drivers/src/lpc17xx_i2c.c</locationURI>
@@ -92,7 +97,7 @@
 		<link>
 			<name>Kernel/Core/hash.c</name>
 			<type>1</type>
-			<location>C:/Users/Samuel/_Repos/EventOS/kernel/core/hash.c</location>
+			<location>D:/JoaoDoAviao/Inatel/TCC/repositorio/EventOS/kernel/core/hash.c</location>
 		</link>
 		<link>
 			<name>Kernel/Core/list.c</name>
@@ -113,6 +118,11 @@
 			<name>Drivers/BSP/EA-XPR-021/light.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/drivers/bsp/EA-XPR-021/light.c</locationURI>
+		</link>
+		<link>
+			<name>Drivers/BSP/EA-XPR-021/temp.c</name>
+			<type>1</type>
+			<location>D:/JoaoDoAviao/Inatel/TCC/repositorio/EventOS/drivers/bsp/EA-XPR-021/temp.c</location>
 		</link>
 		<link>
 			<name>Drivers/CMSIS/LPC17xx/system_LPC17xx.c</name>

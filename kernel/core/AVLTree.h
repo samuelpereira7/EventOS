@@ -50,7 +50,7 @@ typedef ttag_treeNode* ttag_treeNodePtr;
 *********************************************************/
 ttag_treeNodePtr	AVLTree_insertNode(ttag_treeNodePtr ptagRoot, void* pvPayload, ttag_treeNodePtr* pptagNodeHandler);
 ttag_treeNodePtr 	AVLTree_getHandler(ttag_treeNodePtr ptagRoot, void* pvPayloadSearched);
-ttag_treeNodePtr 	AVLTree_removeSpecificNode(ttag_treeNodePtr ptagRoot, ttag_treeNodePtr ptagNodeHandler);
+ttag_treeNodePtr 	AVLTree_removeSpecificNode(ttag_treeNodePtr ptagRoot, ttag_treeNodePtr* ptagNodeHandler);
 ttag_treeNodePtr 	AVLTree_removeNode(ttag_treeNodePtr ptagRoot, void* pvPayload);
 ttag_treeNodePtr	AVLTree_clearTree(ttag_treeNodePtr ptagRoot);
 void				AVLTree_printTree(ttag_treeNodePtr ptagRoot);
