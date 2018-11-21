@@ -51,9 +51,13 @@ void SysTick_Handler(void)
 	}
 	if(msTicks%10000 == 0)
 	{
-		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Systick: Light\n" );
 		uint32_t light = light_read();
-		xEvent_publish(lightEventHandler, EVENT_PRIORITY_LOW, &light, sizeof(light));
+		portBASE_TYPE uxPublishResponse;
+		uxPublishResponse = xEvent_publish(lightEventHandler, EVENT_PRIORITY_LOW, &light, sizeof(light));
+		if( uxPublishResponse == pdFAIL )
+			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_ERROR, "[app] Error on publishing a light event\n");
+		else
+			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, "[app] Success on publish a light event\n");
 	}
 }
 
@@ -116,10 +120,18 @@ void EINT3_IRQHandler(void)
 		ulPressedTime = Application_getMsTicks();
 		uint32_t light = light_read();
 		uint32_t temp  = temp_read();
-		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Button: Temp\n" );
-		xEvent_publish( temperatureEventHandler, EVENT_PRIORITY_HIGH, &temp, sizeof(temp) );
-		Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Publishing new event from Button: Light\n" );
-		xEvent_publish( lightEventHandler, EVENT_PRIORITY_HIGH, &light, sizeof(light) );
+		portBASE_TYPE uxPublishResponse;
+		uxPublishResponse = xEvent_publish( temperatureEventHandler, EVENT_PRIORITY_HIGH, &temp, sizeof(temp) );
+		if( uxPublishResponse == pdFAIL )
+			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_ERROR, "[app] Error on publishing a temperature event\n");
+		else
+			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, "[app] Success on publish a temperature event\n");
+
+		uxPublishResponse = xEvent_publish( lightEventHandler, EVENT_PRIORITY_HIGH, &light, sizeof(light) );
+		if( uxPublishResponse == pdFAIL )
+			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_ERROR, "[app] Error on publishing a light event\n");
+		else
+			Log_print(LOG_FACILITY_USER_LEVEL_MESSAGES, LOG_SEVERITY_INFORMATIONAL, "[app] Success on publish a light event\n");
 	}
 	else if(GPIO_GetIntStatus(PIN_DEFINITION_BUTTON_PORT, PIN_DEFINITION_BUTTON_BIT_VALUE, 0)) {
 		portULONG ulReleaseTime = Application_getMsTicks();
@@ -133,7 +145,7 @@ void EINT3_IRQHandler(void)
 			}
 			else {
 				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from Button: Temp\n" );
-				temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
+				uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"), &temperatureEventHandler);
 				Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from Button: Temp\n" );
 				xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler);
 			}
@@ -153,13 +165,13 @@ void Application_new( void )
 	light_enable();
 	temp_init(Application_getMsTicks);
 	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from init: Light\n" );
-	lightEventHandler = uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"));
+	uxEvent_createEvent((portCHAR*)"Light", strlen((const char *)"Light"), &lightEventHandler);
 	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing on event from init: Light\n" );
 	xEvent_subscribe(Application_lightCallback, lightEventHandler);
 
-	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from Button: Temp\n" );
-	temperatureEventHandler = uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"));
-	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from Button: Temp\n" );
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Creating new event from init: Temp\n" );
+	uxEvent_createEvent((portCHAR*)"Temperature", strlen((const char *)"Temperature"), &temperatureEventHandler);
+	Log_print( LOG_FACILITY_USER_LEVEL_MESSAGES,LOG_SEVERITY_INFORMATIONAL, "[app] Subscribing new event from init: Temp\n" );
 	xEvent_subscribe(Application_temperatureCallback, temperatureEventHandler);
 
 	led2_on();

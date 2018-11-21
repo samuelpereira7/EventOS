@@ -8,8 +8,6 @@
 #include <stdio.h>
 
 #include "EventOS.h"
-#include "event.h"
-#include "AVLTree.h"
 
 #include "Application.h"
 #include "Log.h"
